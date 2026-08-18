@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "Stay Close",
+    "slug": "stay-close",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.stayclose.app",
+      "infoPlist": {
+        "NSContactsUsageDescription": "Stay Close uses your contacts so you can choose the people you want to stay connected with. Your contacts are never uploaded from your device."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.stayclose.app",
+      "permissions": [
+        "android.permission.READ_CONTACTS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "static",
+      "name": "Stay Close",
+      "shortName": "Stay Close",
+      "description": "A private relationship reminder. No cloud, no tracking.",
+      "themeColor": "#4A90E2",
+      "backgroundColor": "#F9F9F9"
+    },
+    "scheme": "stay-close",
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#000000"
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Stay Close uses your contacts so you can choose the people you want to stay connected with. Your contacts are never uploaded from your device."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
