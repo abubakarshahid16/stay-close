@@ -35,7 +35,7 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
-      "output": "static",
+      "output": "single",
       "name": "Stay Close",
       "shortName": "Stay Close",
       "description": "A private relationship reminder. No cloud, no tracking.",
