@@ -4,6 +4,7 @@
  */
 import React, { useState } from 'react';
 import {
+  Alert,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -24,18 +25,27 @@ export default function OnboardingScreen() {
 
   const handleContactsRequest = async () => {
     setIsBusy(true);
-    await setContactsPermissionExplained(true);
-    const service = new ContactService();
-    await service.requestPermission();
-    await setOnboardingCompleted(true);
-    setIsBusy(false);
-    router.replace('/(tabs)');
+    try {
+      await setContactsPermissionExplained(true);
+      const service = new ContactService();
+      await service.requestPermission();
+      await setOnboardingCompleted(true);
+      router.replace('/(tabs)');
+    } catch {
+      Alert.alert('Setup Error', 'Something went wrong. Please try again.');
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   const handleSkipContacts = async () => {
-    await setContactsPermissionExplained(true);
-    await setOnboardingCompleted(true);
-    router.replace('/(tabs)');
+    try {
+      await setContactsPermissionExplained(true);
+      await setOnboardingCompleted(true);
+      router.replace('/(tabs)');
+    } catch {
+      Alert.alert('Setup Error', 'Something went wrong. Please try again.');
+    }
   };
 
   if (step === 'welcome') {
@@ -114,7 +124,7 @@ export default function OnboardingScreen() {
           This happens on your device only — nothing is sent anywhere.
         </Text>
         <Text style={[styles.bodyText, styles.bodySpacer]}>
-          You&apos;ll see a permission prompt from your phone. You can decline and
+          You'll see a permission prompt from your phone. You can decline and
           add people manually later.
         </Text>
 
@@ -134,6 +144,7 @@ export default function OnboardingScreen() {
         <TouchableOpacity
           style={styles.skipButton}
           onPress={handleSkipContacts}
+          disabled={isBusy}
           accessibilityRole="button"
           accessibilityLabel="Skip for now"
           testID="skip-contacts-button"
@@ -166,7 +177,7 @@ function Promise({ text }: { text: string }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F7F6FB',
+    backgroundColor: '#F9F9F9',
   },
   content: {
     flex: 1,
@@ -177,18 +188,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 34,
     fontWeight: '700',
-    color: '#1E1B2E',
+    color: '#1A1A1A',
     marginBottom: 14,
   },
   subtitle: {
     fontSize: 18,
-    color: '#55516B',
+    color: '#444',
     lineHeight: 26,
     marginBottom: 36,
   },
   bodyText: {
     fontSize: 16,
-    color: '#55516B',
+    color: '#444',
     lineHeight: 24,
     marginBottom: 16,
   },
@@ -206,12 +217,12 @@ const styles = StyleSheet.create({
   },
   featureBullet: {
     fontSize: 18,
-    color: '#7C3AED',
+    color: '#4A90E2',
     marginTop: 1,
   },
   featureText: {
     fontSize: 16,
-    color: '#2E2A44',
+    color: '#333',
     flex: 1,
     lineHeight: 22,
   },
@@ -226,18 +237,18 @@ const styles = StyleSheet.create({
   },
   promiseMark: {
     fontSize: 16,
-    color: '#10B981',
+    color: '#34C759',
     fontWeight: '700',
     marginTop: 2,
   },
   promiseText: {
     fontSize: 15,
-    color: '#2E2A44',
+    color: '#333',
     flex: 1,
     lineHeight: 22,
   },
   primaryButton: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#4A90E2',
     borderRadius: 14,
     paddingVertical: 18,
     alignItems: 'center',
@@ -256,7 +267,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   skipButtonText: {
-    color: '#6B6880',
+    color: '#8E8E93',
     fontSize: 15,
   },
 });

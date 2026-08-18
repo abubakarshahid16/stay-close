@@ -1,11 +1,12 @@
 /**
- * Create Circle screen — name + reminder frequency, then straight into
- * adding people. Presented as a modal from Home/Circles.
+ * Create Circle screen — modal for naming a circle and choosing reminder frequency.
  */
 import React, { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,229 +17,188 @@ import {
 import { router } from 'expo-router';
 import { useDatabase } from '../../src/context/DatabaseContext';
 import { CircleRepository } from '../../src/db/repositories/CircleRepository';
-import { notificationService } from '../../src/services/NotificationService';
-import {
-  REMINDER_FREQUENCIES,
-  REMINDER_FREQUENCY_LABELS,
-} from '../../src/types/circle';
+import { REMINDER_FREQUENCY_LABELS } from '../../src/types/circle';
 import type { ReminderFrequency } from '../../src/types/circle';
-import { MAX_CIRCLE_NAME_LENGTH } from '../../src/utils/validation';
+
+const FREQUENCIES: ReminderFrequency[] = [
+  'daily',
+  'every_3_days',
+  'weekly',
+  'every_2_weeks',
+  'monthly',
+];
 
 export default function CreateCircleScreen() {
   const { db } = useDatabase();
   const [name, setName] = useState('');
   const [frequency, setFrequency] = useState<ReminderFrequency>('weekly');
-  const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [nameError, setNameError] = useState('');
 
   const handleCreate = async () => {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setError('Circle name is required');
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setNameError('Circle name is required');
       return;
     }
-    if (trimmed.length > MAX_CIRCLE_NAME_LENGTH) {
-      setError('Name must be 100 characters or fewer');
+    if (trimmedName.length > 100) {
+      setNameError('Name must be 100 characters or fewer');
       return;
     }
-    if (!db || isSaving) return;
+    setNameError('');
 
-    setError(null);
+    if (!db) return;
     setIsSaving(true);
     try {
       const repo = new CircleRepository(db);
-      const circle = await repo.create({ name: trimmed, reminderFrequency: frequency });
-
-      // Best-effort local notification (no-op on web, never blocks creation)
-      try {
-        const permission = await notificationService.getPermissionStatus();
-        if (permission.granted) {
-          await notificationService.scheduleForCircle(circle);
-        } else if (notificationService.isAvailable()) {
-          const request = await notificationService.requestPermission();
-          if (request.granted) {
-            await notificationService.scheduleForCircle(circle);
-          }
-        }
-      } catch {
-        // Notifications must never block circle creation
-      }
-
-      // Go straight to adding people to the new circle
-      router.replace(`/circles/${circle.id}/select`);
+      await repo.create({ name: trimmedName, reminderFrequency: frequency });
+      router.back();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create circle');
+      Alert.alert('Error', err instanceof Error ? err.message : 'Could not create circle.');
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.safe}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.safe}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Text style={styles.label}>Circle name</Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={(value) => {
-            setName(value);
-            if (error) setError(null);
-          }}
-          placeholder="Family, Old friends, Mentors…"
-          placeholderTextColor="#A8A5B8"
-          autoFocus
-          maxLength={MAX_CIRCLE_NAME_LENGTH + 20}
-          accessibilityLabel="Circle name"
-          testID="circle-name-input"
-        />
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <Text style={styles.label}>Circle Name</Text>
+          <TextInput
+            style={[styles.input, nameError ? styles.inputError : null]}
+            value={name}
+            onChangeText={(t) => { setName(t); setNameError(''); }}
+            placeholder="e.g. Family, Close Friends, Work"
+            placeholderTextColor="#C7C7CC"
+            maxLength={100}
+            returnKeyType="done"
+            accessibilityLabel="Circle name"
+            accessibilityHint="Enter a name for this circle"
+            testID="circle-name-input"
+            autoFocus
+          />
+          {nameError ? (
+            <Text style={styles.errorText} accessibilityRole="alert">{nameError}</Text>
+          ) : null}
 
-        <Text style={styles.label}>How often should we remind you?</Text>
-        <View
-          style={styles.frequencyPicker}
-          accessibilityRole="radiogroup"
-          accessibilityLabel="Reminder frequency"
-          testID="frequency-picker"
-        >
-          {REMINDER_FREQUENCIES.map((freq) => {
-            const selected = frequency === freq;
-            return (
+          <Text style={styles.label}>Reminder Frequency</Text>
+          <View style={styles.frequencies} testID="frequency-picker">
+            {FREQUENCIES.map((freq) => (
               <TouchableOpacity
                 key={freq}
-                style={[styles.freqOption, selected && styles.freqOptionSelected]}
+                style={[styles.freqOption, freq === frequency && styles.freqSelected]}
                 onPress={() => setFrequency(freq)}
                 accessibilityRole="radio"
-                accessibilityState={{ selected }}
+                accessibilityState={{ selected: freq === frequency }}
                 accessibilityLabel={REMINDER_FREQUENCY_LABELS[freq]}
                 testID={`freq-option-${freq}`}
               >
                 <Text
-                  style={[styles.freqOptionText, selected && styles.freqOptionTextSelected]}
+                  style={[
+                    styles.freqText,
+                    freq === frequency && styles.freqTextSelected,
+                  ]}
                 >
                   {REMINDER_FREQUENCY_LABELS[freq]}
                 </Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
+            ))}
+          </View>
 
-        {error && (
-          <Text style={styles.error} accessibilityRole="alert" testID="create-circle-error">
-            {error}
-          </Text>
-        )}
-
-        <TouchableOpacity
-          style={[styles.createButton, isSaving && styles.createButtonDisabled]}
-          onPress={handleCreate}
-          disabled={isSaving}
-          accessibilityRole="button"
-          accessibilityLabel="Create circle"
-          testID="create-circle-button"
-        >
-          <Text style={styles.createButtonText}>
-            {isSaving ? 'Creating…' : 'Create Circle'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Cancel"
-          testID="cancel-create-circle"
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <TouchableOpacity
+            style={[styles.createButton, isSaving && styles.buttonDisabled]}
+            onPress={handleCreate}
+            disabled={isSaving}
+            accessibilityRole="button"
+            accessibilityLabel="Create circle"
+            accessibilityState={{ disabled: isSaving }}
+            testID="create-circle-button"
+          >
+            <Text style={styles.createButtonText}>
+              {isSaving ? 'Creating…' : 'Create Circle'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F7F6FB',
+    backgroundColor: '#F9F9F9',
   },
   content: {
     padding: 24,
-    paddingTop: 28,
+    paddingTop: 20,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#6B6880',
+    color: '#8E8E93',
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: 10,
-    marginTop: 8,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginTop: 20,
   },
   input: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E9E7F2',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderRadius: 10,
+    padding: 14,
     fontSize: 17,
-    color: '#1E1B2E',
-    marginBottom: 24,
+    color: '#1A1A1A',
+    borderWidth: 1.5,
+    borderColor: '#E5E5EA',
   },
-  frequencyPicker: {
+  inputError: {
+    borderColor: '#FF3B30',
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginTop: 6,
+  },
+  frequencies: {
     gap: 8,
-    marginBottom: 24,
   },
   freqOption: {
     backgroundColor: '#fff',
     borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#E9E7F2',
-    paddingVertical: 13,
+    paddingVertical: 14,
     paddingHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: '#E5E5EA',
   },
-  freqOptionSelected: {
-    borderColor: '#7C3AED',
-    backgroundColor: '#F1EBFE',
+  freqSelected: {
+    borderColor: '#4A90E2',
+    backgroundColor: '#EBF4FF',
   },
-  freqOptionText: {
+  freqText: {
     fontSize: 16,
-    color: '#2E2A44',
+    color: '#1A1A1A',
   },
-  freqOptionTextSelected: {
-    color: '#7C3AED',
+  freqTextSelected: {
+    color: '#4A90E2',
     fontWeight: '600',
   },
-  error: {
-    color: '#EF4444',
-    fontSize: 15,
-    marginBottom: 16,
-  },
   createButton: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#4A90E2',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
+    marginTop: 32,
   },
-  createButtonDisabled: {
+  buttonDisabled: {
     opacity: 0.5,
   },
   createButtonText: {
     color: '#fff',
     fontSize: 17,
     fontWeight: '600',
-  },
-  cancelButton: {
-    alignItems: 'center',
-    paddingVertical: 14,
-    marginTop: 6,
-  },
-  cancelButtonText: {
-    color: '#6B6880',
-    fontSize: 15,
   },
 });

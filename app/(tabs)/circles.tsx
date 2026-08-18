@@ -1,33 +1,24 @@
 /**
  * Circles screen — lists all circles, tap to manage, + to create new.
  */
-import React, { useCallback } from 'react';
+import React from 'react';
 import {
   FlatList,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { useCircles } from '../../src/hooks/useCircles';
 import { LoadingView } from '../../src/components/LoadingView';
 import { ErrorView } from '../../src/components/ErrorView';
 import { REMINDER_FREQUENCY_LABELS } from '../../src/types/circle';
 import type { Circle } from '../../src/types/circle';
-import { avatarColor, colors, initials, radii, shadow } from '../../src/theme';
 
 export default function CirclesScreen() {
   const { circles, isLoading, error, refresh } = useCircles();
-
-  // Refresh whenever this tab regains focus (a circle may have been
-  // created, renamed, or deleted on another screen).
-  useFocusEffect(
-    useCallback(() => {
-      refresh();
-    }, [refresh])
-  );
 
   if (isLoading) return <LoadingView />;
   if (error) return <ErrorView message={error.message} onRetry={refresh} />;
@@ -76,21 +67,12 @@ function CircleRow({ circle, onPress }: { circle: Circle; onPress: () => void })
       accessibilityLabel={`${circle.name}, ${REMINDER_FREQUENCY_LABELS[circle.reminderFrequency]} reminders`}
       testID={`circle-row-${circle.id}`}
     >
-      <CircleAvatar name={circle.name} />
       <View style={styles.rowContent}>
         <Text style={styles.rowName}>{circle.name}</Text>
         <Text style={styles.rowFreq}>{REMINDER_FREQUENCY_LABELS[circle.reminderFrequency]}</Text>
       </View>
       <Text style={styles.chevron}>›</Text>
     </TouchableOpacity>
-  );
-}
-
-function CircleAvatar({ name }: { name: string }) {
-  return (
-    <View style={[styles.rowAvatar, { backgroundColor: avatarColor(name) }]}>
-      <Text style={styles.rowAvatarText}>{initials(name)}</Text>
-    </View>
   );
 }
 
@@ -116,7 +98,7 @@ function EmptyCircles({ onCreateCircle }: { onCreateCircle: () => void }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: '#F9F9F9',
   },
   header: {
     flexDirection: 'row',
@@ -128,21 +110,19 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '800',
-    color: colors.ink,
-    letterSpacing: -0.5,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   addButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: radii.pill,
-    ...shadow.soft,
+    backgroundColor: '#4A90E2',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   addButtonText: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   list: {
     paddingHorizontal: 20,
@@ -150,44 +130,33 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   row: {
-    backgroundColor: colors.card,
-    borderRadius: radii.md,
-    padding: 14,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.line,
-    ...shadow.soft,
-  },
-  rowAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  rowAvatarText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '800',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
   rowContent: {
     flex: 1,
   },
   rowName: {
     fontSize: 17,
-    fontWeight: '700',
-    color: colors.ink,
+    fontWeight: '600',
+    color: '#1A1A1A',
     marginBottom: 2,
   },
   rowFreq: {
     fontSize: 13,
-    color: colors.inkSoft,
+    color: '#8E8E93',
   },
   chevron: {
-    fontSize: 24,
-    color: colors.inkFaint,
+    fontSize: 22,
+    color: '#C7C7CC',
     marginLeft: 8,
   },
   empty: {
@@ -198,27 +167,26 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: colors.ink,
+    fontWeight: '700',
+    color: '#1A1A1A',
     marginBottom: 10,
   },
   emptyBody: {
     fontSize: 15,
-    color: colors.inkSoft,
+    color: '#666',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
   },
   emptyButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 26,
-    paddingVertical: 13,
-    borderRadius: radii.md,
-    ...shadow.soft,
+    backgroundColor: '#4A90E2',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
   emptyButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });

@@ -20,7 +20,10 @@ export function useCircles(): UseCirclesResult {
   const [error, setError] = useState<Error | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!db) return;
+    if (!db) {
+      setIsLoading(false); // don't hang if DB failed to open
+      return;
+    }
     try {
       setIsLoading(true);
       const repo = new CircleRepository(db);

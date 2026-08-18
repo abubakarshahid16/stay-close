@@ -22,11 +22,17 @@ export function useSettings(): UseSettingsResult {
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    if (!db) return;
+    if (!db) {
+      setIsLoading(false); // don't hang if DB failed to open
+      return;
+    }
     try {
       const repo = new SettingsRepository(db);
       const appSettings = await repo.getAppSettings();
       setSettings(appSettings);
+    } catch {
+      // Settings not critical — fall back to defaults silently
+      setSettings(DEFAULT_SETTINGS);
     } finally {
       setIsLoading(false);
     }

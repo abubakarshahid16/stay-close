@@ -1,11 +1,9 @@
 /**
  * Settings screen — notification privacy, backup/restore, delete all data.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Linking,
-  Platform,
-  SafeAreaView,
+  Alert,
   ScrollView,
   StyleSheet,
   Switch,
@@ -13,49 +11,18 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import * as DocumentPicker from 'expo-document-picker';
 import { useDatabase } from '../../src/context/DatabaseContext';
 import { useSettings } from '../../src/hooks/useSettings';
 import { BackupService } from '../../src/services/BackupService';
 import { SettingsRepository } from '../../src/db/repositories/SettingsRepository';
-import { notificationService } from '../../src/services/NotificationService';
 import { LoadingView } from '../../src/components/LoadingView';
-import { confirmAsync, showAlert } from '../../src/utils/dialogs';
 
 export default function SettingsScreen() {
   const { db } = useDatabase();
-  const { settings, isLoading, setNotificationPrivacy, refresh } = useSettings();
+  const { settings, isLoading, setNotificationPrivacy } = useSettings();
   const [isBusy, setIsBusy] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-
-  useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const handleBeforeInstall = (e: Event) => {
-        e.preventDefault();
-        setInstallPrompt(e);
-      };
-      window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-      return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-    }
-  }, []);
-
-  const handleInstallApp = async () => {
-    if (installPrompt) {
-      installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
-        setInstallPrompt(null);
-      }
-    } else if (Platform.OS === 'web') {
-      showAlert(
-        'Install Stay Close',
-        '• Desktop / Android: Click the Install icon in your browser address bar or menu.\n• iPhone / iOS: Tap Share (📤) → "Add to Home Screen".'
-      );
-    } else {
-      Linking.openURL('https://github.com/abubakarshahid16/stay-close/releases');
-    }
-  };
 
   const handleExportBackup = async () => {
     if (!db) return;
@@ -65,71 +32,39 @@ export default function SettingsScreen() {
       const filePath = await service.export();
       await service.share(filePath);
     } catch (err) {
-      showAlert('Backup Failed', err instanceof Error ? err.message : 'Could not export backup.');
+      Alert.alert('Backup Failed', err instanceof Error ? err.message : 'Could not export backup.');
     } finally {
       setIsBusy(false);
     }
   };
 
-  const handleRestoreBackup = async () => {
-    if (!db) return;
-
-    const result = await DocumentPicker.getDocumentAsync({
-      type: 'application/json',
-      copyToCacheDirectory: true,
-      multiple: false,
-    });
-    if (result.canceled || result.assets.length === 0) return;
-    const asset = result.assets[0];
-
-    const confirmed = await confirmAsync(
-      'Restore Backup',
-      'Restoring replaces all current circles, people, and history with the backup contents. Continue?',
-      { confirmLabel: 'Restore', destructive: true }
-    );
-    if (!confirmed) return;
-
-    setIsBusy(true);
-    try {
-      const service = new BackupService(db);
-      if (Platform.OS === 'web') {
-        // On web the picked document is a File object — read it directly.
-        const file = asset.file;
-        if (!file) throw new Error('Could not read the selected file');
-        await service.importFromString(await file.text());
-      } else {
-        await service.import(asset.uri);
-      }
-      await refresh();
-      showAlert('Backup Restored', 'Your circles and history were restored.');
-      router.replace('/(tabs)');
-    } catch (err) {
-      showAlert('Restore Failed', err instanceof Error ? err.message : 'Could not restore backup.');
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
-  const handleDeleteAllData = async () => {
-    const confirmed = await confirmAsync(
+  const handleDeleteAllData = () => {
+    Alert.alert(
       'Delete All Data',
       'This will permanently delete all circles, people, and history. This cannot be undone.',
-      { confirmLabel: 'Delete Everything', destructive: true }
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Everything',
+          style: 'destructive',
+          onPress: async () => {
+            if (!db) return;
+            setIsBusy(true);
+            try {
+              // Delete in dependency order (FK cascade handles child rows)
+              await db.runAsync('DELETE FROM circles');
+              await new SettingsRepository(db).deleteAll();
+            } catch (err) {
+              Alert.alert('Error', 'Could not delete all data.');
+              setIsBusy(false);
+              return;
+            }
+            setIsBusy(false);
+            router.replace('/(tabs)');
+          },
+        },
+      ]
     );
-    if (!confirmed || !db) return;
-
-    setIsBusy(true);
-    try {
-      // FK cascade removes circle_people and reminder_history rows
-      await db.runAsync('DELETE FROM circles', []);
-      await new SettingsRepository(db).deleteAll();
-      await notificationService.cancelAll();
-      router.replace('/(tabs)');
-    } catch {
-      showAlert('Error', 'Could not delete all data.');
-    } finally {
-      setIsBusy(false);
-    }
   };
 
   if (isLoading) return <LoadingView />;
@@ -144,7 +79,7 @@ export default function SettingsScreen() {
             <View style={styles.settingLabel}>
               <Text style={styles.settingTitle}>Detailed Notifications</Text>
               <Text style={styles.settingDesc}>
-                Show the person&apos;s name in notification previews
+                Show the person's name in notification previews
               </Text>
             </View>
             <Switch
@@ -174,35 +109,7 @@ export default function SettingsScreen() {
             testID="export-backup-button"
           >
             <Text style={styles.backupButtonText}>
-              {isBusy ? 'Working…' : 'Export Backup'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.button, styles.restoreButton, isBusy && styles.buttonDisabled]}
-            onPress={handleRestoreBackup}
-            disabled={isBusy}
-            accessibilityRole="button"
-            accessibilityLabel="Restore backup"
-            testID="restore-backup-button"
-          >
-            <Text style={styles.restoreButtonText}>Restore Backup</Text>
-          </TouchableOpacity>
-        </View>
-
-        <SectionHeader title="App Installation" />
-        <View style={styles.card}>
-          <Text style={styles.backupDesc}>
-            Install Stay Close on Desktop, Android, or iPhone/iPad for one-tap home screen access and offline local notifications.
-          </Text>
-          <TouchableOpacity
-            style={[styles.button, styles.installButton]}
-            onPress={handleInstallApp}
-            accessibilityRole="button"
-            accessibilityLabel="Install App"
-            testID="install-app-button"
-          >
-            <Text style={styles.installButtonText}>
-              {installPrompt ? '⚡ Install App Now' : '📲 How to Install / Download'}
+              {isBusy ? 'Exporting…' : 'Export Backup'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -240,7 +147,7 @@ function SectionHeader({ title }: { title: string }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F7F6FB',
+    backgroundColor: '#F9F9F9',
   },
   content: {
     padding: 20,
@@ -250,7 +157,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B6880',
+    color: '#8E8E93',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 24,
@@ -278,23 +185,23 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1E1B2E',
+    color: '#1A1A1A',
     marginBottom: 2,
   },
   settingDesc: {
     fontSize: 13,
-    color: '#6B6880',
+    color: '#8E8E93',
     lineHeight: 18,
   },
   backupDesc: {
     fontSize: 14,
-    color: '#6B6880',
+    color: '#666',
     lineHeight: 20,
     marginBottom: 14,
   },
   privacyDesc: {
     fontSize: 14,
-    color: '#6B6880',
+    color: '#666',
     lineHeight: 20,
   },
   button: {
@@ -303,28 +210,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backupButton: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#4A90E2',
   },
   backupButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  restoreButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#7C3AED',
-    marginTop: 10,
-  },
-  restoreButtonText: {
-    color: '#7C3AED',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  installButton: {
-    backgroundColor: '#059669',
-  },
-  installButtonText: {
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
@@ -332,10 +220,10 @@ const styles = StyleSheet.create({
   deleteButton: {
     backgroundColor: '#fff',
     borderWidth: 1.5,
-    borderColor: '#EF4444',
+    borderColor: '#FF3B30',
   },
   deleteButtonText: {
-    color: '#EF4444',
+    color: '#FF3B30',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -344,7 +232,7 @@ const styles = StyleSheet.create({
   },
   versionText: {
     textAlign: 'center',
-    color: '#A8A5B8',
+    color: '#C7C7CC',
     fontSize: 12,
     marginTop: 40,
     marginBottom: 16,
