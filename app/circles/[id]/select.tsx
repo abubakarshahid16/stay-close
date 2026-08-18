@@ -176,7 +176,7 @@ export default function AddPeopleScreen() {
           if (manualError) setManualError(null);
         }}
         placeholder="Name"
-        placeholderTextColor="#B0B0B6"
+        placeholderTextColor="#A8A5B8"
         accessibilityLabel="Person name"
         testID="manual-name-input"
       />
@@ -185,7 +185,7 @@ export default function AddPeopleScreen() {
         value={manualPhone}
         onChangeText={setManualPhone}
         placeholder="Phone (optional)"
-        placeholderTextColor="#B0B0B6"
+        placeholderTextColor="#A8A5B8"
         keyboardType="phone-pad"
         accessibilityLabel="Person phone number"
         testID="manual-phone-input"
@@ -278,7 +278,7 @@ export default function AddPeopleScreen() {
               value={query}
               onChangeText={setQuery}
               placeholder="Search contacts…"
-              placeholderTextColor="#B0B0B6"
+              placeholderTextColor="#A8A5B8"
               accessibilityLabel="Search contacts"
               testID="contact-search-input"
             />
@@ -348,7 +348,7 @@ export default function AddPeopleScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#F7F6FB',
   },
   content: {
     padding: 20,
@@ -358,15 +358,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: '#E9E7F2',
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: '#1E1B2E',
     marginBottom: 10,
   },
   emptyText: {
-    color: '#8E8E93',
+    color: '#6B6880',
     fontSize: 15,
     marginTop: 12,
     textAlign: 'center',
@@ -382,8 +382,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   contactRowSelected: {
-    borderColor: '#4A90E2',
-    backgroundColor: '#EFF6FF',
+    borderColor: '#7C3AED',
+    backgroundColor: '#F1EBFE',
   },
   contactInfo: {
     flex: 1,
@@ -391,30 +391,30 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1A1A1A',
+    color: '#1E1B2E',
   },
   contactNameMuted: {
-    color: '#B0B0B6',
+    color: '#A8A5B8',
   },
   contactPhone: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: '#6B6880',
     marginTop: 2,
   },
   contactMark: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#4A90E2',
+    color: '#7C3AED',
     marginLeft: 8,
   },
   footer: {
     padding: 16,
     borderTopWidth: 0.5,
-    borderTopColor: '#E5E5EA',
-    backgroundColor: '#F9F9F9',
+    borderTopColor: '#E9E7F2',
+    backgroundColor: '#F7F6FB',
   },
   primaryButton: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#7C3AED',
     borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
@@ -428,13 +428,13 @@ const styles = StyleSheet.create({
   secondaryButton: {
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#4A90E2',
+    borderColor: '#7C3AED',
     paddingVertical: 12,
     alignItems: 'center',
     backgroundColor: '#fff',
   },
   secondaryButtonText: {
-    color: '#4A90E2',
+    color: '#7C3AED',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -467,16 +467,16 @@ const styles = StyleSheet.create({
   manualTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#1E1B2E',
     marginBottom: 12,
   },
   error: {
-    color: '#FF3B30',
+    color: '#EF4444',
     fontSize: 14,
     marginBottom: 8,
   },
   addedNote: {
-    color: '#34C759',
+    color: '#10B981',
     fontSize: 14,
     fontWeight: '500',
     marginTop: 10,
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   doneLinkText: {
-    color: '#4A90E2',
+    color: '#7C3AED',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -25,6 +25,7 @@ import {
 import type { Circle, CirclePerson, ReminderFrequency } from '../../../src/types/circle';
 import { MAX_CIRCLE_NAME_LENGTH } from '../../../src/utils/validation';
 import { confirmAsync, showAlert } from '../../../src/utils/dialogs';
+import { avatarColor, initials } from '../../../src/theme';
 
 export default function CircleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -240,6 +241,9 @@ export default function CircleDetailScreen() {
         }
         renderItem={({ item }) => (
           <View style={styles.personRow} testID={`person-row-${item.id}`}>
+            <View style={[styles.personAvatar, { backgroundColor: avatarColor(item.displayName) }]}>
+              <Text style={styles.personAvatarText}>{initials(item.displayName)}</Text>
+            </View>
             <View style={styles.personInfo}>
               <Text style={styles.personName}>{item.displayName}</Text>
               {item.phoneNumber ? (
@@ -277,7 +281,7 @@ export default function CircleDetailScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#F7F6FB',
   },
   content: {
     padding: 20,
@@ -286,7 +290,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: '#6B6880',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     marginBottom: 8,
@@ -296,11 +300,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: '#E9E7F2',
     paddingHorizontal: 16,
     paddingVertical: 13,
     fontSize: 17,
-    color: '#1A1A1A',
+    color: '#1E1B2E',
   },
   frequencyPicker: {
     flexDirection: 'row',
@@ -311,20 +315,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: '#E5E5EA',
+    borderColor: '#E9E7F2',
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
   freqChipSelected: {
-    borderColor: '#4A90E2',
-    backgroundColor: '#EFF6FF',
+    borderColor: '#7C3AED',
+    backgroundColor: '#F1EBFE',
   },
   freqChipText: {
     fontSize: 14,
-    color: '#333',
+    color: '#2E2A44',
   },
   freqChipTextSelected: {
-    color: '#4A90E2',
+    color: '#7C3AED',
     fontWeight: '600',
   },
   peopleHeader: {
@@ -333,7 +337,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addPeopleButton: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#7C3AED',
     borderRadius: 8,
     paddingVertical: 7,
     paddingHorizontal: 12,
@@ -345,7 +349,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   emptyPeople: {
-    color: '#8E8E93',
+    color: '#6B6880',
     fontSize: 15,
     lineHeight: 21,
     marginTop: 8,
@@ -359,21 +363,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  personAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  personAvatarText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '800',
+  },
   personInfo: {
     flex: 1,
   },
   personName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1A1A1A',
+    color: '#1E1B2E',
   },
   personPhone: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: '#6B6880',
     marginTop: 2,
   },
   removeText: {
-    color: '#FF3B30',
+    color: '#EF4444',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -381,13 +398,13 @@ const styles = StyleSheet.create({
     marginTop: 32,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#FF3B30',
+    borderColor: '#EF4444',
     paddingVertical: 14,
     alignItems: 'center',
     backgroundColor: '#fff',
   },
   deleteButtonText: {
-    color: '#FF3B30',
+    color: '#EF4444',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -399,16 +416,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#F7F6FB',
   },
   missingTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#1E1B2E',
     marginBottom: 20,
   },
   primaryButton: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#7C3AED',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 32,

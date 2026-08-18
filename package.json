@@ -1,6 +1,6 @@
 {
   "name": "stay-close",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "expo-router/entry",
   "private": true,
   "scripts": {
@@ -17,6 +17,7 @@
     "test:all": "jest --passWithNoTests --runInBand"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
     "@react-native/jest-preset": "^0.86.0",
     "expo": "~57.0.13",
     "expo-constants": "~57.0.12",

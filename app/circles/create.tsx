@@ -91,7 +91,7 @@ export default function CreateCircleScreen() {
             if (error) setError(null);
           }}
           placeholder="Family, Old friends, Mentors…"
-          placeholderTextColor="#B0B0B6"
+          placeholderTextColor="#A8A5B8"
           autoFocus
           maxLength={MAX_CIRCLE_NAME_LENGTH + 20}
           accessibilityLabel="Circle name"
@@ -163,7 +163,7 @@ export default function CreateCircleScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#F7F6FB',
   },
   content: {
     padding: 24,
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: '#6B6880',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     marginBottom: 10,
@@ -182,11 +182,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: '#E9E7F2',
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 17,
-    color: '#1A1A1A',
+    color: '#1E1B2E',
     marginBottom: 24,
   },
   frequencyPicker: {
@@ -197,29 +197,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#E5E5EA',
+    borderColor: '#E9E7F2',
     paddingVertical: 13,
     paddingHorizontal: 16,
   },
   freqOptionSelected: {
-    borderColor: '#4A90E2',
-    backgroundColor: '#EFF6FF',
+    borderColor: '#7C3AED',
+    backgroundColor: '#F1EBFE',
   },
   freqOptionText: {
     fontSize: 16,
-    color: '#333',
+    color: '#2E2A44',
   },
   freqOptionTextSelected: {
-    color: '#4A90E2',
+    color: '#7C3AED',
     fontWeight: '600',
   },
   error: {
-    color: '#FF3B30',
+    color: '#EF4444',
     fontSize: 15,
     marginBottom: 16,
   },
   createButton: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#7C3AED',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   cancelButtonText: {
-    color: '#8E8E93',
+    color: '#6B6880',
     fontSize: 15,
   },
 });

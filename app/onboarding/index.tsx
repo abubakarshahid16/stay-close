@@ -166,7 +166,7 @@ function Promise({ text }: { text: string }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#F7F6FB',
   },
   content: {
     flex: 1,
@@ -177,18 +177,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 34,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#1E1B2E',
     marginBottom: 14,
   },
   subtitle: {
     fontSize: 18,
-    color: '#444',
+    color: '#55516B',
     lineHeight: 26,
     marginBottom: 36,
   },
   bodyText: {
     fontSize: 16,
-    color: '#444',
+    color: '#55516B',
     lineHeight: 24,
     marginBottom: 16,
   },
@@ -206,12 +206,12 @@ const styles = StyleSheet.create({
   },
   featureBullet: {
     fontSize: 18,
-    color: '#4A90E2',
+    color: '#7C3AED',
     marginTop: 1,
   },
   featureText: {
     fontSize: 16,
-    color: '#333',
+    color: '#2E2A44',
     flex: 1,
     lineHeight: 22,
   },
@@ -226,18 +226,18 @@ const styles = StyleSheet.create({
   },
   promiseMark: {
     fontSize: 16,
-    color: '#34C759',
+    color: '#10B981',
     fontWeight: '700',
     marginTop: 2,
   },
   promiseText: {
     fontSize: 15,
-    color: '#333',
+    color: '#2E2A44',
     flex: 1,
     lineHeight: 22,
   },
   primaryButton: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#7C3AED',
     borderRadius: 14,
     paddingVertical: 18,
     alignItems: 'center',
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   skipButtonText: {
-    color: '#8E8E93',
+    color: '#6B6880',
     fontSize: 15,
   },
 });

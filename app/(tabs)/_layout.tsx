@@ -1,13 +1,26 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../../src/theme';
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#4A90E2',
-        tabBarInactiveTintColor: '#8E8E93',
-        tabBarStyle: { borderTopWidth: 0.5, borderTopColor: '#E5E5EA' },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.inkFaint,
+        tabBarStyle: {
+          borderTopWidth: 1,
+          borderTopColor: colors.line,
+          backgroundColor: colors.card,
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 6,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+        },
         headerShown: false,
       }}
     >
@@ -16,6 +29,9 @@ export default function TabsLayout() {
         options={{
           title: 'Home',
           tabBarAccessibilityLabel: 'Home',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="heart" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -23,6 +39,9 @@ export default function TabsLayout() {
         options={{
           title: 'Circles',
           tabBarAccessibilityLabel: 'My circles',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>

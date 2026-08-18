@@ -20,6 +20,7 @@ import { CirclePeopleRepository } from '../../src/db/repositories/CirclePeopleRe
 import { ReminderHistoryRepository } from '../../src/db/repositories/ReminderHistoryRepository';
 import { ReminderEngine } from '../../src/services/ReminderEngine';
 import type { Circle, CirclePerson } from '../../src/types/circle';
+import { avatarColor, colors, initials, radii, shadow } from '../../src/theme';
 
 interface ActiveSuggestion {
   circle: Circle;
@@ -151,11 +152,19 @@ export default function HomeScreen() {
         <Text style={styles.header} accessibilityRole="header">
           Stay Close
         </Text>
+        <Text style={styles.subheader}>Someone is waiting to hear from you 💜</Text>
 
         <View style={styles.card} testID="suggestion-card">
-          <Text style={styles.circleLabel} accessibilityLabel={`Circle: ${suggestion.circle.name}`}>
-            {suggestion.circle.name}
-          </Text>
+          <View style={styles.circleBadge}>
+            <Text style={styles.circleLabel} accessibilityLabel={`Circle: ${suggestion.circle.name}`}>
+              {suggestion.circle.name}
+            </Text>
+          </View>
+          <View
+            style={[styles.avatar, { backgroundColor: avatarColor(suggestion.person.displayName) }]}
+          >
+            <Text style={styles.avatarText}>{initials(suggestion.person.displayName)}</Text>
+          </View>
           <Text style={styles.personName} accessibilityRole="header">
             {suggestion.person.displayName}
           </Text>
@@ -164,6 +173,7 @@ export default function HomeScreen() {
               {suggestion.person.phoneNumber}
             </Text>
           )}
+          <Text style={styles.nudge}>A quick call or message makes their day.</Text>
         </View>
 
         <View style={styles.actions}>
@@ -255,7 +265,7 @@ function AllDoneState({ onRefresh }: { onRefresh: () => void }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: colors.bg,
   },
   content: {
     padding: 24,
@@ -268,74 +278,108 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   header: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: 32,
+    fontSize: 32,
+    fontWeight: '800',
+    color: colors.ink,
+    marginBottom: 6,
     textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  subheader: {
+    fontSize: 15,
+    color: colors.inkSoft,
+    textAlign: 'center',
+    marginBottom: 28,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: colors.card,
+    borderRadius: radii.lg,
+    padding: 28,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadow.card,
+  },
+  circleBadge: {
+    backgroundColor: colors.primarySoft,
+    borderRadius: radii.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginBottom: 18,
   },
   circleLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4A90E2',
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  avatar: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    ...shadow.soft,
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: 30,
+    fontWeight: '800',
   },
   personName: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: 4,
+    fontWeight: '800',
+    color: colors.ink,
+    marginBottom: 2,
+    textAlign: 'center',
   },
   phone: {
     fontSize: 15,
-    color: '#666',
+    color: colors.inkSoft,
     marginTop: 4,
+  },
+  nudge: {
+    fontSize: 14,
+    color: colors.inkFaint,
+    marginTop: 14,
+    textAlign: 'center',
   },
   actions: {
     gap: 12,
   },
   actionButton: {
-    borderRadius: 12,
+    borderRadius: radii.md,
     paddingVertical: 16,
     paddingHorizontal: 20,
     alignItems: 'center',
   },
   doneButton: {
-    backgroundColor: '#34C759',
+    backgroundColor: colors.primary,
+    ...shadow.soft,
   },
   doneButtonText: {
     color: '#fff',
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   elseButton: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderWidth: 1.5,
-    borderColor: '#4A90E2',
+    borderColor: colors.primary,
   },
   elseButtonText: {
-    color: '#4A90E2',
+    color: colors.primary,
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   skipButton: {
     backgroundColor: 'transparent',
   },
   skipButtonText: {
-    color: '#8E8E93',
+    color: colors.inkSoft,
     fontSize: 15,
   },
   settingsLink: {
@@ -343,19 +387,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   settingsLinkText: {
-    color: '#8E8E93',
+    color: colors.inkSoft,
     fontSize: 14,
+    fontWeight: '600',
   },
   emptyTitle: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontWeight: '800',
+    color: colors.ink,
     marginBottom: 12,
     textAlign: 'center',
   },
   emptyBody: {
     fontSize: 16,
-    color: '#666',
+    color: colors.inkSoft,
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 32,

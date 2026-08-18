@@ -2,7 +2,7 @@
   "expo": {
     "name": "Stay Close",
     "slug": "stay-close",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,7 +24,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.stayclose.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "android.permission.READ_CONTACTS",
         "android.permission.POST_NOTIFICATIONS",
@@ -38,8 +38,8 @@
       "name": "Stay Close",
       "shortName": "Stay Close",
       "description": "A private relationship reminder. No cloud, no tracking.",
-      "themeColor": "#4A90E2",
-      "backgroundColor": "#F9F9F9"
+      "themeColor": "#7C3AED",
+      "backgroundColor": "#F7F6FB"
     },
     "scheme": "stay-close",
     "plugins": [

@@ -16,6 +16,7 @@ import { LoadingView } from '../../src/components/LoadingView';
 import { ErrorView } from '../../src/components/ErrorView';
 import { REMINDER_FREQUENCY_LABELS } from '../../src/types/circle';
 import type { Circle } from '../../src/types/circle';
+import { avatarColor, colors, initials, radii, shadow } from '../../src/theme';
 
 export default function CirclesScreen() {
   const { circles, isLoading, error, refresh } = useCircles();
@@ -75,12 +76,21 @@ function CircleRow({ circle, onPress }: { circle: Circle; onPress: () => void })
       accessibilityLabel={`${circle.name}, ${REMINDER_FREQUENCY_LABELS[circle.reminderFrequency]} reminders`}
       testID={`circle-row-${circle.id}`}
     >
+      <CircleAvatar name={circle.name} />
       <View style={styles.rowContent}>
         <Text style={styles.rowName}>{circle.name}</Text>
         <Text style={styles.rowFreq}>{REMINDER_FREQUENCY_LABELS[circle.reminderFrequency]}</Text>
       </View>
       <Text style={styles.chevron}>›</Text>
     </TouchableOpacity>
+  );
+}
+
+function CircleAvatar({ name }: { name: string }) {
+  return (
+    <View style={[styles.rowAvatar, { backgroundColor: avatarColor(name) }]}>
+      <Text style={styles.rowAvatarText}>{initials(name)}</Text>
+    </View>
   );
 }
 
@@ -106,7 +116,7 @@ function EmptyCircles({ onCreateCircle }: { onCreateCircle: () => void }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: colors.bg,
   },
   header: {
     flexDirection: 'row',
@@ -118,19 +128,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontWeight: '800',
+    color: colors.ink,
+    letterSpacing: -0.5,
   },
   addButton: {
-    backgroundColor: '#4A90E2',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: radii.pill,
+    ...shadow.soft,
   },
   addButtonText: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   list: {
     paddingHorizontal: 20,
@@ -138,33 +150,44 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   row: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: colors.card,
+    borderRadius: radii.md,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadow.soft,
+  },
+  rowAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  rowAvatarText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '800',
   },
   rowContent: {
     flex: 1,
   },
   rowName: {
     fontSize: 17,
-    fontWeight: '600',
-    color: '#1A1A1A',
+    fontWeight: '700',
+    color: colors.ink,
     marginBottom: 2,
   },
   rowFreq: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: colors.inkSoft,
   },
   chevron: {
-    fontSize: 22,
-    color: '#C7C7CC',
+    fontSize: 24,
+    color: colors.inkFaint,
     marginLeft: 8,
   },
   empty: {
@@ -175,26 +198,27 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontWeight: '800',
+    color: colors.ink,
     marginBottom: 10,
   },
   emptyBody: {
     fontSize: 15,
-    color: '#666',
+    color: colors.inkSoft,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
   },
   emptyButton: {
-    backgroundColor: '#4A90E2',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 10,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 26,
+    paddingVertical: 13,
+    borderRadius: radii.md,
+    ...shadow.soft,
   },
   emptyButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

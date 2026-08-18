@@ -32,18 +32,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#F7F6FB',
   },
   message: {
     fontSize: 16,
-    color: '#666',
+    color: '#6B6880',
     textAlign: 'center',
     marginBottom: 16,
   },
   button: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#7C3AED',
     borderRadius: 8,
   },
   buttonText: {

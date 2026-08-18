@@ -192,7 +192,7 @@ function SectionHeader({ title }: { title: string }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#F7F6FB',
   },
   content: {
     padding: 20,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: '#6B6880',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 24,
@@ -230,23 +230,23 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1A1A1A',
+    color: '#1E1B2E',
     marginBottom: 2,
   },
   settingDesc: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: '#6B6880',
     lineHeight: 18,
   },
   backupDesc: {
     fontSize: 14,
-    color: '#666',
+    color: '#6B6880',
     lineHeight: 20,
     marginBottom: 14,
   },
   privacyDesc: {
     fontSize: 14,
-    color: '#666',
+    color: '#6B6880',
     lineHeight: 20,
   },
   button: {
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backupButton: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#7C3AED',
   },
   backupButtonText: {
     color: '#fff',
@@ -265,21 +265,21 @@ const styles = StyleSheet.create({
   restoreButton: {
     backgroundColor: '#fff',
     borderWidth: 1.5,
-    borderColor: '#4A90E2',
+    borderColor: '#7C3AED',
     marginTop: 10,
   },
   restoreButtonText: {
-    color: '#4A90E2',
+    color: '#7C3AED',
     fontSize: 15,
     fontWeight: '600',
   },
   deleteButton: {
     backgroundColor: '#fff',
     borderWidth: 1.5,
-    borderColor: '#FF3B30',
+    borderColor: '#EF4444',
   },
   deleteButtonText: {
-    color: '#FF3B30',
+    color: '#EF4444',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   },
   versionText: {
     textAlign: 'center',
-    color: '#C7C7CC',
+    color: '#A8A5B8',
     fontSize: 12,
     marginTop: 40,
     marginBottom: 16,
