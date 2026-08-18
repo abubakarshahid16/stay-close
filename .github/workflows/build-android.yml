@@ -67,19 +67,9 @@ jobs:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
           ANDROID_NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/26.1.10909125
 
-      - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign
-        with:
-          releaseDirectory: android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          alias: stay-close-key
-          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-
       - name: Rename APK
         run: |
-          mv "${{ steps.sign.outputs.signedReleaseFile }}" stay-close-${{ github.ref_name }}.apk
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk stay-close-${{ github.ref_name }}.apk
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -88,15 +78,16 @@ jobs:
           body: |
             ## 📱 Install Stay Close ${{ github.ref_name }}
 
-            ### Android
-            1. **Download** `stay-close-${{ github.ref_name }}.apk` below
-            2. Open the downloaded file on your Android phone
-            3. If asked, allow **"Install unknown apps"** in Settings → your browser → Allow
+            ### Android — Direct Download
+            1. **[⬇️ Download APK](https://github.com/abubakarshahid16/stay-close/releases/latest/download/stay-close-${{ github.ref_name }}.apk)**
+            2. Open the file on your Android phone
+            3. Allow **"Install unknown apps"** if prompted (one-time only)
             4. Tap **Install** — done!
 
-            ### Web (laptop or phone browser)
-            Visit: **https://${{ github.repository_owner }}.github.io/stay-close**
+            ### Web / iPhone / iPad
+            Open in any browser: **https://abubakarshahid16.github.io/stay-close**
+            On iPhone: Share → Add to Home Screen
 
             ---
-            🔒 **Privacy**: No internet permission. Your contacts never leave your device. No ads, no cloud, no tracking.
+            🔒 **Privacy**: No internet permission. Your contacts never leave your device.
           files: stay-close-${{ github.ref_name }}.apk
