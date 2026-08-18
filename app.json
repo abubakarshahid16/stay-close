@@ -2,6 +2,7 @@
   "expo": {
     "name": "Stay Close",
     "slug": "stay-close",
+    "platforms": ["ios", "android", "web"],
     "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
