@@ -36,7 +36,7 @@ jobs:
         run: npm ci
 
       - name: Build web export
-        run: npx expo export --platform web 2>&1
+        run: npx expo export --platform web 2>&1 | tee export.log || (echo "=== EXPO EXPORT ERROR LOG ===" && cat export.log && exit 1) 2>&1
         env:
           NODE_ENV: production
           EXPO_NO_TELEMETRY: '1'
