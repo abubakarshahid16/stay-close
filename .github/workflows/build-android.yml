@@ -37,33 +37,22 @@ jobs:
         env:
           EXPO_NO_TELEMETRY: '1'
 
-      - name: Patch Android project for CI
+      - name: Patch Android for CI
         run: |
-          echo "=== Available NDK versions ==="
-          ls "$ANDROID_HOME/ndk/" 2>/dev/null || echo "No NDK at $ANDROID_HOME/ndk/"
-
-          NDK_VERSION=$(ls "$ANDROID_HOME/ndk/" 2>/dev/null | sort -V | tail -1)
-          echo "Selected NDK: $NDK_VERSION"
-
-          if [ -n "$NDK_VERSION" ]; then
-            awk -v ndk="$NDK_VERSION" '
-              /ndkVersion/ { print "        ndkVersion \"" ndk "\""; next }
-              { print }
-            ' android/build.gradle > android/build.gradle.tmp
-            mv android/build.gradle.tmp android/build.gradle
-            echo "=== ndkVersion after patch ==="
-            grep ndkVersion android/build.gradle || true
+          echo "=== NDK versions available ==="
+          ls "$ANDROID_HOME/ndk/" 2>/dev/null || echo "none"
+          NDK=$(ls "$ANDROID_HOME/ndk/" 2>/dev/null | sort -V | tail -1)
+          echo "Using NDK: $NDK"
+          if [ -n "$NDK" ]; then
+            sed -i "s/ndkVersion \"[^\"]*\"/ndkVersion \"$NDK\"/" android/build.gradle
           else
-            echo "WARNING: No NDK found, removing ndkVersion line"
             sed -i '/ndkVersion/d' android/build.gradle
           fi
-
-          cat >> android/gradle.properties << 'PROPS'
-newArchEnabled=false
-org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m
-org.gradle.daemon=false
-PROPS
-          echo "=== gradle.properties tail ===" && tail -5 android/gradle.properties
+          grep ndkVersion android/build.gradle || echo "ndkVersion removed"
+          echo "newArchEnabled=false" >> android/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m" >> android/gradle.properties
+          echo "org.gradle.daemon=false" >> android/gradle.properties
+          tail -5 android/gradle.properties
 
       - name: Make Gradle executable
         run: chmod +x android/gradlew
@@ -81,38 +70,30 @@ PROPS
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
         env:
-          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g"
 
-      - name: Find and copy APK
+      - name: Collect APK
         run: |
           APK=$(find android/app/build/outputs/apk -name "*.apk" | head -1)
-          echo "Found APK: $APK"
-          if [ -z "$APK" ]; then
-            echo "ERROR: No APK found!"
-            find android/app/build -type f | head -30
-            exit 1
-          fi
+          echo "APK: $APK"
+          [ -n "$APK" ] || { echo "No APK!"; exit 1; }
           cp "$APK" stay-close-${{ github.ref_name }}.apk
-          ls -lh stay-close-${{ github.ref_name }}.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: Stay Close ${{ github.ref_name }}
           body: |
-            ## 📱 Install Stay Close ${{ github.ref_name }}
+            ## Install Stay Close ${{ github.ref_name }}
 
-            ### Android — Direct Download
-            1. **[⬇️ Download APK](https://github.com/abubakarshahid16/stay-close/releases/latest/download/stay-close-${{ github.ref_name }}.apk)**
-            2. Open the file on your Android phone
-            3. Allow "Install unknown apps" if prompted (one-time only)
-            4. Tap Install — done!
+            ### Android
+            1. Download APK below
+            2. Open on your Android phone
+            3. Allow Install unknown apps if prompted
+            4. Tap Install
 
-            ### Web / iPhone / iPad
-            Open: **https://abubakarshahid16.github.io/stay-close**
-            On iPhone: Share → Add to Home Screen
-
-            ---
-            🔒 No internet permission. Your contacts never leave your device.
+            ### Web / iPhone
+            https://abubakarshahid16.github.io/stay-close
+            iPhone: Share then Add to Home Screen
           files: stay-close-${{ github.ref_name }}.apk
           tag_name: ${{ github.ref_name }}
