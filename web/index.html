@@ -11,133 +11,59 @@
   <meta name="apple-mobile-web-app-title" content="Stay Close" />
   <link rel="manifest" href="/stay-close/manifest.json" />
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; background: #F7F6FB; }
-
-    #splash {
-      position: fixed; inset: 0; z-index: 9999;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      background: #F7F6FB;
-      transition: opacity 0.4s ease;
-    }
-    #splash.hidden { opacity: 0; pointer-events: none; }
-
-    .splash-icon {
-      width: 88px; height: 88px;
-      background: #7C3AED;
-      border-radius: 22px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 44px;
-      margin-bottom: 20px;
-      box-shadow: 0 8px 32px rgba(124,58,237,0.25);
-    }
-    .splash-title {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 26px; font-weight: 700;
-      color: #1a1a2e; margin-bottom: 6px;
-    }
-    .splash-sub {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px; color: #888; margin-bottom: 32px;
-    }
-
-    #install-btn {
-      display: none;
-      align-items: center; gap: 10px;
-      background: #7C3AED; color: #fff;
-      border: none; border-radius: 14px;
-      padding: 14px 28px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 16px; font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 4px 16px rgba(124,58,237,0.35);
-      margin-bottom: 20px;
-      transition: transform 0.1s, box-shadow 0.1s;
-    }
-    #install-btn:active { transform: scale(0.97); }
-    #install-btn.visible { display: flex; }
-
-    #ios-hint {
-      display: none;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px; color: #999; text-align: center;
-      line-height: 1.6; max-width: 240px; margin-bottom: 20px;
-    }
-    #ios-hint.visible { display: block; }
-
-    .spinner {
-      width: 28px; height: 28px;
-      border: 3px solid #E9E6F5;
-      border-top-color: #7C3AED;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #root { height: 100%; }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;background:#F7F6FB}
+    #splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#F7F6FB;transition:opacity .4s ease}
+    #splash.hidden{opacity:0;pointer-events:none}
+    .icon{width:88px;height:88px;background:#7C3AED;border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:44px;margin-bottom:20px;box-shadow:0 8px 32px rgba(124,58,237,.25)}
+    .title{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:26px;font-weight:700;color:#1a1a2e;margin-bottom:6px}
+    .sub{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#888;margin-bottom:32px}
+    #install-btn{display:none;align-items:center;gap:10px;background:#7C3AED;color:#fff;border:none;border-radius:14px;padding:14px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(124,58,237,.35);margin-bottom:20px}
+    #install-btn.visible{display:flex}
+    #ios-hint{display:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#999;text-align:center;line-height:1.6;max-width:240px;margin-bottom:20px}
+    #ios-hint.visible{display:block}
+    .spinner{width:28px;height:28px;border:3px solid #E9E6F5;border-top-color:#7C3AED;border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #root{height:100%}
   </style>
 </head>
 <body>
   <div id="splash">
-    <div class="splash-icon">🤝</div>
-    <div class="splash-title">Stay Close</div>
-    <div class="splash-sub">Your private relationship reminder</div>
-
-    <button id="install-btn">
-      <span>⬇️</span> Install App
-    </button>
-
-    <div id="ios-hint">
-      Tap the <strong>Share</strong> button below,<br/>
-      then <strong>Add to Home Screen</strong>
-    </div>
-
-    <div class="spinner" id="spinner"></div>
+    <div class="icon">🤝</div>
+    <div class="title">Stay Close</div>
+    <div class="sub">Your private relationship reminder</div>
+    <button id="install-btn"><span>⬇️</span> Install App</button>
+    <div id="ios-hint">Tap the <strong>Share</strong> button below,<br/>then <strong>Add to Home Screen</strong></div>
+    <div class="spinner"></div>
   </div>
-
   <div id="root"></div>
-
   <script>
+    // Register service worker for instant repeat loads
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/stay-close/sw.js', {scope: '/stay-close/'});
+    }
     var deferredPrompt = null;
     var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    var isInStandalone = window.navigator.standalone === true
-      || window.matchMedia('(display-mode: standalone)').matches;
-
-    // Show iOS hint in Safari (not in standalone mode)
-    if (isIOS && !isInStandalone) {
-      document.getElementById('ios-hint').classList.add('visible');
-    }
-
-    // Android/Desktop Chrome install prompt
+    var isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+    if (isIOS && !isStandalone) document.getElementById('ios-hint').classList.add('visible');
     window.addEventListener('beforeinstallprompt', function(e) {
-      e.preventDefault();
-      deferredPrompt = e;
-      var btn = document.getElementById('install-btn');
-      btn.classList.add('visible');
+      e.preventDefault(); deferredPrompt = e;
+      document.getElementById('install-btn').classList.add('visible');
     });
-
     document.getElementById('install-btn').addEventListener('click', function() {
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(function() {
-        deferredPrompt = null;
-        document.getElementById('install-btn').classList.remove('visible');
-      });
+      deferredPrompt.userChoice.then(function() { deferredPrompt = null; document.getElementById('install-btn').classList.remove('visible'); });
     });
-
-    // Hide splash once React mounts
     var observer = new MutationObserver(function() {
       var root = document.getElementById('root');
       if (root && root.children.length > 0) {
         var splash = document.getElementById('splash');
-        if (splash) {
-          splash.classList.add('hidden');
-          setTimeout(function() { splash.remove(); }, 500);
-        }
+        if (splash) { splash.classList.add('hidden'); setTimeout(function(){splash.remove();},500); }
         observer.disconnect();
       }
     });
-    observer.observe(document.getElementById('root'), { childList: true, subtree: true });
+    observer.observe(document.getElementById('root'), {childList:true,subtree:true});
   </script>
 </body>
 </html>
