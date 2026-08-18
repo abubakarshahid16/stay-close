@@ -24,7 +24,7 @@ jobs:
           cache: 'npm'
 
       - name: Setup Java 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -39,23 +39,31 @@ jobs:
 
       - name: Patch Android project for CI
         run: |
-          # Find the first installed NDK version and use it
-          NDK_VERSION=$(ls $ANDROID_HOME/ndk/ 2>/dev/null | sort -V | tail -1)
-          echo "Using NDK: $NDK_VERSION"
+          echo "=== Available NDK versions ==="
+          ls "$ANDROID_HOME/ndk/" 2>/dev/null || echo "No NDK at $ANDROID_HOME/ndk/"
+
+          NDK_VERSION=$(ls "$ANDROID_HOME/ndk/" 2>/dev/null | sort -V | tail -1)
+          echo "Selected NDK: $NDK_VERSION"
+
           if [ -n "$NDK_VERSION" ]; then
-            # Replace ndkVersion in build.gradle with the installed version
-            sed -i "s/ndkVersion .*/ndkVersion "$NDK_VERSION"/" android/build.gradle || true
+            awk -v ndk="$NDK_VERSION" '
+              /ndkVersion/ { print "        ndkVersion \"" ndk "\""; next }
+              { print }
+            ' android/build.gradle > android/build.gradle.tmp
+            mv android/build.gradle.tmp android/build.gradle
+            echo "=== ndkVersion after patch ==="
+            grep ndkVersion android/build.gradle || true
+          else
+            echo "WARNING: No NDK found, removing ndkVersion line"
+            sed -i '/ndkVersion/d' android/build.gradle
           fi
 
-          # Append CI-friendly settings to gradle.properties
           cat >> android/gradle.properties << 'PROPS'
-          newArchEnabled=false
-          org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m
-          org.gradle.daemon=false
-          PROPS
-
-          echo "=== NDK available ===" && ls $ANDROID_HOME/ndk/ || true
-          echo "=== ndkVersion in build.gradle ===" && grep ndkVersion android/build.gradle || true
+newArchEnabled=false
+org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m
+org.gradle.daemon=false
+PROPS
+          echo "=== gradle.properties tail ===" && tail -5 android/gradle.properties
 
       - name: Make Gradle executable
         run: chmod +x android/gradlew
@@ -78,8 +86,14 @@ jobs:
       - name: Find and copy APK
         run: |
           APK=$(find android/app/build/outputs/apk -name "*.apk" | head -1)
-          echo "Found: $APK"
+          echo "Found APK: $APK"
+          if [ -z "$APK" ]; then
+            echo "ERROR: No APK found!"
+            find android/app/build -type f | head -30
+            exit 1
+          fi
           cp "$APK" stay-close-${{ github.ref_name }}.apk
+          ls -lh stay-close-${{ github.ref_name }}.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
