@@ -8,14 +8,59 @@ No cloud. No account. No tracking. Your contacts never leave your device.
 [![CI](https://github.com/abubakarshahid16/stay-close/actions/workflows/ci.yml/badge.svg)](https://github.com/abubakarshahid16/stay-close/actions/workflows/ci.yml)
 [![Release](https://github.com/abubakarshahid16/stay-close/actions/workflows/build-android.yml/badge.svg)](https://github.com/abubakarshahid16/stay-close/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Web-blue)](#install)
-[![Privacy](https://img.shields.io/badge/privacy-100%25%20local-purple)](#privacy)
-
-[**📱 Download APK**](https://github.com/abubakarshahid16/stay-close/releases/latest) · [**🌐 Open Web App**](https://abubakarshahid16.github.io/stay-close) · [Report a Bug](https://github.com/abubakarshahid16/stay-close/issues/new?template=bug_report.yml) · [Request a Feature](https://github.com/abubakarshahid16/stay-close/issues/new?template=feature_request.yml)
-
-</div>
+[![Privacy](https://img.shields.io/badge/privacy-100%25%20local-purple)](#-privacy)
 
 ---
+
+## ⬇️ Install Now
+
+<table>
+<tr>
+<td align="center" width="33%">
+
+### 🤖 Android
+
+<a href="https://github.com/abubakarshahid16/stay-close/releases/latest">
+  <img src="https://img.shields.io/badge/Download%20APK-Android-brightgreen?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
+</a>
+
+Download & open the `.apk` file  
+Allow "Install unknown apps" once  
+No Play Store needed
+
+</td>
+<td align="center" width="33%">
+
+### 🌐 Web (any device)
+
+<a href="https://abubakarshahid16.github.io/stay-close">
+  <img src="https://img.shields.io/badge/Open%20Web%20App-Launch-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Open Web App" />
+</a>
+
+Works on any browser  
+iPhone · iPad · PC · Mac  
+No install required
+
+</td>
+<td align="center" width="33%">
+
+### 🍎 iPhone / iPad
+
+<a href="https://abubakarshahid16.github.io/stay-close">
+  <img src="https://img.shields.io/badge/Add%20to%20Home%20Screen-iOS-black?style=for-the-badge&logo=apple&logoColor=white" alt="Add to Home Screen" />
+</a>
+
+Open web app in **Safari**  
+Tap **Share → Add to Home Screen**  
+Opens like a native app
+
+</td>
+</tr>
+</table>
+
+---
+
+</div>
 
 ## The Problem
 
@@ -33,133 +78,74 @@ You have people in your life who matter — family, old friends, mentors, collea
 - **Backup & restore** — Export your data as a JSON file; import it anytime
 - **Zero internet** — No network calls, ever. Nothing leaves your phone.
 
-## 📸 Screenshots
+## 📱 Install Guide
 
-| Onboarding | Create a Circle |
-|---|---|
-| ![Onboarding welcome](docs/screenshots/onboarding-welcome.png) | ![Create circle](docs/screenshots/create-circle.png) |
-
-| Today's Suggestion | Manage a Circle |
-|---|---|
-| ![Home suggestion](docs/screenshots/home-suggestion.png) | ![Circle detail](docs/screenshots/circle-detail.png) |
-
-## 📱 Install
-
-### Android (recommended)
+### Android
 
 1. Go to the [**latest release**](https://github.com/abubakarshahid16/stay-close/releases/latest)
 2. Download `stay-close-vX.X.X.apk`
-3. Open the file on your phone
-4. If prompted, allow **Install unknown apps** for your browser in Settings
-5. Tap **Install**
+3. Open the file on your phone — tap **Install**
+4. If prompted, allow **Install unknown apps** for your browser in Settings (one-time only)
 
-> Android only needs this permission once. Stay Close itself has no internet permission.
+> Android only needs this permission once. Stay Close itself has **no internet permission**.
 
-### Web (any browser)
+### iPhone & iPad (Safari PWA)
 
-Open **[abubakarshahid16.github.io/stay-close](https://abubakarshahid16.github.io/stay-close)** on your laptop or phone browser.
+1. Open **[abubakarshahid16.github.io/stay-close](https://abubakarshahid16.github.io/stay-close)** in Safari
+2. Tap the **Share** button (box with arrow at the bottom)
+3. Tap **Add to Home Screen**
+4. Tap **Add** — the app icon appears on your home screen
 
-> The web version runs fully in-browser. Note: contacts access and push notifications are limited by browser APIs.
+### Web (PC / Mac / any browser)
+
+Open **[abubakarshahid16.github.io/stay-close](https://abubakarshahid16.github.io/stay-close)** — no install needed.
 
 ## 🔒 Privacy
 
-Stay Close was designed from the ground up with privacy as a hard constraint, not an afterthought.
+- **No internet permission** on Android — the app literally cannot make network calls
+- **No account required** — nothing to sign up for
+- **No analytics, no ads, no tracking** of any kind
+- **Your contacts never leave your device**
+- All data stored locally in SQLite on your phone
 
-| What we do | What we don't do |
-|---|---|
-| Store everything in SQLite on your device | No server, no API, no backend |
-| Use contact names/numbers you pick | Never upload contacts anywhere |
-| Send local notifications | No push notification service |
-| Let you export your data as plain JSON | No analytics, no crash reporting |
-| Run 100% offline | No internet permission in the manifest |
+## 🛠 Tech Stack
 
-Your data is yours. Uninstall the app and it's gone — no account to delete, no data to request.
-
-## 🏗️ Tech Stack
-
-| Layer | Technology |
+| | |
 |---|---|
 | Framework | React Native + Expo SDK 57 |
 | Navigation | Expo Router (file-based) |
-| Database | expo-sqlite (SQLite, local only) |
-| Contacts | expo-contacts |
-| Notifications | expo-notifications (local only) |
-| Backup | expo-file-system + expo-sharing |
-| Testing | Jest + React Native Testing Library |
+| Database | expo-sqlite (local SQLite) |
+| Language | TypeScript (strict) |
 | CI/CD | GitHub Actions |
+| Android builds | Gradle (no EAS required) |
+| Web hosting | GitHub Pages |
 
-## 🧪 Testing
+## 👩‍💻 For Developers
 
-```bash
-npm install
-npm test
-```
-
-136 tests across six layers: unit → database → components → integration → end-to-end → manual QA.
-
-```
-PASS  __tests__/unit/ReminderEngine.test.ts
-PASS  __tests__/unit/prng.test.ts
-PASS  __tests__/unit/validation.test.ts
-PASS  __tests__/db/CircleRepository.test.ts
-PASS  __tests__/db/CirclePeopleRepository.test.ts
-PASS  __tests__/db/ReminderHistoryRepository.test.ts
-PASS  __tests__/db/SettingsRepository.test.ts
-PASS  __tests__/components/CirclesScreen.test.tsx
-PASS  __tests__/components/CreateCircleScreen.test.tsx
-PASS  __tests__/components/CircleDetailScreen.test.tsx
-PASS  __tests__/components/AddPeopleScreen.test.tsx
-PASS  __tests__/components/SettingsScreen.test.tsx
-PASS  __tests__/integration/BackupService.test.ts
-```
-
-## 🚀 Development
+### Run locally
 
 ```bash
-# Install dependencies
+git clone https://github.com/abubakarshahid16/stay-close.git
+cd stay-close
 npm install
-
-# Start development server
 npx expo start
-
-# Scan QR code with Expo Go on your phone
 ```
 
-### Run on device
+### Release an Android APK
 
 ```bash
-# Android
-npx expo run:android
-
-# iOS (macOS only)
-npx expo run:ios
-```
-
-### Build release APK
-
-Tag a release and GitHub Actions builds it automatically:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.0.1
+git push origin v1.0.1
 # APK appears at /releases in ~15 minutes
 ```
 
-### Deploy the web app
+GitHub Actions builds the APK automatically on every `v*.*.*` tag.
 
-Every push to `main` builds the web export and publishes it to GitHub Pages
-(`.github/workflows/deploy-web.yml`). The workflow enables Pages automatically
-on first run; if it fails with a permissions error, set **Settings → Pages →
-Source: GitHub Actions** once and re-run.
+### Run tests
 
-The web build is configured for project-page hosting via
-`experiments.baseUrl: "/stay-close"` in `app.json` — if you fork this repo
-under a different name, change that value to match.
-
-Web limitations (by design, the phone app is the primary target): the device
-contact picker and scheduled notifications aren't available in browsers, so
-the web app uses manual person entry and skips notification scheduling.
-Data persists in browser storage via SQLite (WASM).
+```bash
+npm test
+```
 
 ## 📁 Project Structure
 
@@ -191,20 +177,18 @@ stay-close/
 │   ├── types/                  # TypeScript interfaces
 │   └── utils/validation.ts
 ├── __tests__/                  # All test suites
-├── .github/workflows/
-│   ├── ci.yml                  # Tests on every push
-│   ├── build-android.yml       # APK + GitHub Release on tag
-│   └── deploy-web.yml          # GitHub Pages on main push
-└── eas.json                    # Build profiles
+└── .github/workflows/
+    ├── ci.yml                  # Tests on every push
+    ├── build-android.yml       # APK + GitHub Release on tag
+    └── deploy-web.yml          # GitHub Pages on main push
 ```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+Contributions are welcome!
 
 - 🐛 [Report a bug](https://github.com/abubakarshahid16/stay-close/issues/new?template=bug_report.yml)
 - 💡 [Request a feature](https://github.com/abubakarshahid16/stay-close/issues/new?template=feature_request.yml)
-- 📖 Improve documentation
 
 ## 📄 License
 
