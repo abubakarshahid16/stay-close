@@ -1,8 +1,9 @@
 /**
  * Settings screen — notification privacy, backup/restore, delete all data.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Linking,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -26,6 +27,35 @@ export default function SettingsScreen() {
   const { db } = useDatabase();
   const { settings, isLoading, setNotificationPrivacy, refresh } = useSettings();
   const [isBusy, setIsBusy] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const handleBeforeInstall = (e: Event) => {
+        e.preventDefault();
+        setInstallPrompt(e);
+      };
+      window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+      return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    }
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (installPrompt) {
+      installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setInstallPrompt(null);
+      }
+    } else if (Platform.OS === 'web') {
+      showAlert(
+        'Install Stay Close',
+        '• Desktop / Android: Click the Install icon in your browser address bar or menu.\n• iPhone / iOS: Tap Share (📤) → "Add to Home Screen".'
+      );
+    } else {
+      Linking.openURL('https://github.com/abubakarshahid16/stay-close/releases');
+    }
+  };
 
   const handleExportBackup = async () => {
     if (!db) return;
@@ -159,6 +189,24 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
+        <SectionHeader title="App Installation" />
+        <View style={styles.card}>
+          <Text style={styles.backupDesc}>
+            Install Stay Close on Desktop, Android, or iPhone/iPad for one-tap home screen access and offline local notifications.
+          </Text>
+          <TouchableOpacity
+            style={[styles.button, styles.installButton]}
+            onPress={handleInstallApp}
+            accessibilityRole="button"
+            accessibilityLabel="Install App"
+            testID="install-app-button"
+          >
+            <Text style={styles.installButtonText}>
+              {installPrompt ? '⚡ Install App Now' : '📲 How to Install / Download'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <SectionHeader title="Privacy" />
         <View style={styles.card}>
           <Text style={styles.privacyDesc}>
@@ -270,6 +318,14 @@ const styles = StyleSheet.create({
   },
   restoreButtonText: {
     color: '#7C3AED',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  installButton: {
+    backgroundColor: '#059669',
+  },
+  installButtonText: {
+    color: '#fff',
     fontSize: 15,
     fontWeight: '600',
   },
