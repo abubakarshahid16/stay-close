@@ -1,0 +1,31 @@
+{
+  "name": "Stay Close",
+  "short_name": "Stay Close",
+  "description": "A private relationship reminder. No cloud, no tracking.",
+  "start_url": "/stay-close/",
+  "scope": "/stay-close/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#7C3AED",
+  "background_color": "#F7F6FB",
+  "icons": [
+    {
+      "src": "/stay-close/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/stay-close/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/stay-close/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
