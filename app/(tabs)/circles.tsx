@@ -1,7 +1,7 @@
 /**
  * Circles screen — lists all circles, tap to manage, + to create new.
  */
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   FlatList,
   SafeAreaView,
@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCircles } from '../../src/hooks/useCircles';
 import { LoadingView } from '../../src/components/LoadingView';
 import { ErrorView } from '../../src/components/ErrorView';
@@ -19,6 +19,14 @@ import type { Circle } from '../../src/types/circle';
 
 export default function CirclesScreen() {
   const { circles, isLoading, error, refresh } = useCircles();
+
+  // Refresh whenever this tab regains focus (a circle may have been
+  // created, renamed, or deleted on another screen).
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   if (isLoading) return <LoadingView />;
   if (error) return <ErrorView message={error.message} onRetry={refresh} />;

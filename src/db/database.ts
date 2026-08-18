@@ -31,6 +31,7 @@ async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
     'PRAGMA user_version'
   );
   const currentVersion = result?.user_version ?? 0;
+  if (currentVersion >= CURRENT_VERSION) return;
 
   if (currentVersion < 1) {
     await db.withTransactionAsync(async () => {

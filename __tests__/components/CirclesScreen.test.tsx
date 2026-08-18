@@ -2,7 +2,7 @@
  * Component tests for the Circles screen.
  */
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 
 // Mock hooks before importing components
 jest.mock('../../src/hooks/useCircles');

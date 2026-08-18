@@ -85,18 +85,22 @@ npm install
 npm test
 ```
 
-127 tests across six layers: unit → database → components → integration → end-to-end → manual QA.
+136 tests across six layers: unit → database → components → integration → end-to-end → manual QA.
 
 ```
-PASS  __tests__/unit/ReminderEngine.test.ts        (22 tests)
-PASS  __tests__/db/CircleRepository.test.ts        (14 tests)
-PASS  __tests__/db/CirclePeopleRepository.test.ts  (18 tests)
-PASS  __tests__/db/ReminderHistoryRepository.test.ts (16 tests)
-PASS  __tests__/db/SettingsRepository.test.ts      (9 tests)
-PASS  __tests__/components/CirclesScreen.test.tsx  (7 tests)
-PASS  __tests__/components/CreateCircleScreen.test.tsx (8 tests)
-PASS  __tests__/components/SettingsScreen.test.tsx (5 tests)
-PASS  __tests__/integration/BackupService.test.ts  (8 tests)
+PASS  __tests__/unit/ReminderEngine.test.ts
+PASS  __tests__/unit/prng.test.ts
+PASS  __tests__/unit/validation.test.ts
+PASS  __tests__/db/CircleRepository.test.ts
+PASS  __tests__/db/CirclePeopleRepository.test.ts
+PASS  __tests__/db/ReminderHistoryRepository.test.ts
+PASS  __tests__/db/SettingsRepository.test.ts
+PASS  __tests__/components/CirclesScreen.test.tsx
+PASS  __tests__/components/CreateCircleScreen.test.tsx
+PASS  __tests__/components/CircleDetailScreen.test.tsx
+PASS  __tests__/components/AddPeopleScreen.test.tsx
+PASS  __tests__/components/SettingsScreen.test.tsx
+PASS  __tests__/integration/BackupService.test.ts
 ```
 
 ## 🚀 Development
@@ -130,6 +134,22 @@ git tag v1.0.0
 git push origin v1.0.0
 # APK appears at /releases in ~15 minutes
 ```
+
+### Deploy the web app
+
+Every push to `main` builds the web export and publishes it to GitHub Pages
+(`.github/workflows/deploy-web.yml`). The workflow enables Pages automatically
+on first run; if it fails with a permissions error, set **Settings → Pages →
+Source: GitHub Actions** once and re-run.
+
+The web build is configured for project-page hosting via
+`experiments.baseUrl: "/stay-close"` in `app.json` — if you fork this repo
+under a different name, change that value to match.
+
+Web limitations (by design, the phone app is the primary target): the device
+contact picker and scheduled notifications aren't available in browsers, so
+the web app uses manual person entry and skips notification scheduling.
+Data persists in browser storage via SQLite (WASM).
 
 ## 📁 Project Structure
 

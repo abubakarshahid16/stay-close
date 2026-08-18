@@ -4,7 +4,6 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -12,12 +11,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useDatabase } from '../../src/context/DatabaseContext';
 import { useCircles } from '../../src/hooks/useCircles';
 import { useSettings } from '../../src/hooks/useSettings';
 import { LoadingView } from '../../src/components/LoadingView';
-import { CircleRepository } from '../../src/db/repositories/CircleRepository';
 import { CirclePeopleRepository } from '../../src/db/repositories/CirclePeopleRepository';
 import { ReminderHistoryRepository } from '../../src/db/repositories/ReminderHistoryRepository';
 import { ReminderEngine } from '../../src/services/ReminderEngine';
@@ -31,7 +29,7 @@ interface ActiveSuggestion {
 
 export default function HomeScreen() {
   const { db, isReady } = useDatabase();
-  const { circles, isLoading: circlesLoading } = useCircles();
+  const { circles, isLoading: circlesLoading, refresh: refreshCircles } = useCircles();
   const { settings, isLoading: settingsLoading } = useSettings();
   const [suggestion, setSuggestion] = useState<ActiveSuggestion | null>(null);
   const [suggestionLoading, setSuggestionLoading] = useState(true);
@@ -96,6 +94,16 @@ export default function HomeScreen() {
     }
   }, [isReady, circlesLoading, settingsLoading, loadSuggestion]);
 
+  // Data can change while this screen is unfocused (circle created,
+  // people added) — reload circles every time Home regains focus.
+  useFocusEffect(
+    useCallback(() => {
+      if (isReady) {
+        refreshCircles();
+      }
+    }, [isReady, refreshCircles])
+  );
+
   const handleDone = useCallback(async () => {
     if (!db || !suggestion) return;
     const historyRepo = new ReminderHistoryRepository(db);
@@ -122,6 +130,11 @@ export default function HomeScreen() {
 
   if (!isReady || circlesLoading || settingsLoading || suggestionLoading) {
     return <LoadingView />;
+  }
+
+  // First launch → walk through onboarding before anything else
+  if (!settings.onboardingCompleted) {
+    return <Redirect href="/onboarding" />;
   }
 
   if (circles.length === 0) {
@@ -222,7 +235,7 @@ function AllDoneState({ onRefresh }: { onRefresh: () => void }) {
     <SafeAreaView style={styles.safe}>
       <View style={styles.centeredContent} testID="all-done-state">
         <Text style={styles.header}>Stay Close</Text>
-        <Text style={styles.emptyTitle}>You're all caught up!</Text>
+        <Text style={styles.emptyTitle}>You&apos;re all caught up!</Text>
         <Text style={styles.emptyBody}>
           No more suggestions right now. Check back later.
         </Text>

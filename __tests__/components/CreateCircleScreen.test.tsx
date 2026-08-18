@@ -2,7 +2,7 @@
  * Component tests for the Create Circle screen.
  */
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import CreateCircleScreen from '../../app/circles/create';
 
 // Mock DatabaseContext

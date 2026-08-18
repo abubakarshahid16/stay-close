@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import type { SQLiteDatabase } from 'expo-sqlite';
@@ -87,6 +88,13 @@ export class BackupService {
 
   async export(): Promise<string> {
     const json = await this.exportToString();
+
+    // On web there is no document directory — download the file instead.
+    if (Platform.OS === 'web') {
+      this.downloadInBrowser(json);
+      return BACKUP_FILENAME;
+    }
+
     const path = `${FileSystem.documentDirectory}${BACKUP_FILENAME}`;
     await FileSystem.writeAsStringAsync(path, json, {
       encoding: FileSystem.EncodingType.UTF8,
@@ -95,6 +103,13 @@ export class BackupService {
   }
 
   async share(filePath?: string): Promise<void> {
+    if (Platform.OS === 'web') {
+      // export() already triggered a browser download; nothing to share.
+      if (!filePath) {
+        await this.export();
+      }
+      return;
+    }
     const path = filePath ?? (await this.export());
     const isAvailable = await Sharing.isAvailableAsync();
     if (isAvailable) {
@@ -103,6 +118,19 @@ export class BackupService {
         dialogTitle: 'Save Stay Close Backup',
       });
     }
+  }
+
+  /** Browser-only: save the backup JSON as a downloaded file. */
+  private downloadInBrowser(json: string): void {
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = BACKUP_FILENAME;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   }
 
   async import(filePath: string): Promise<void> {

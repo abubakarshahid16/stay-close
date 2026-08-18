@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import {
-  Alert,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -13,15 +13,18 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
 import { useDatabase } from '../../src/context/DatabaseContext';
 import { useSettings } from '../../src/hooks/useSettings';
 import { BackupService } from '../../src/services/BackupService';
 import { SettingsRepository } from '../../src/db/repositories/SettingsRepository';
+import { notificationService } from '../../src/services/NotificationService';
 import { LoadingView } from '../../src/components/LoadingView';
+import { confirmAsync, showAlert } from '../../src/utils/dialogs';
 
 export default function SettingsScreen() {
   const { db } = useDatabase();
-  const { settings, isLoading, setNotificationPrivacy } = useSettings();
+  const { settings, isLoading, setNotificationPrivacy, refresh } = useSettings();
   const [isBusy, setIsBusy] = useState(false);
 
   const handleExportBackup = async () => {
@@ -32,38 +35,71 @@ export default function SettingsScreen() {
       const filePath = await service.export();
       await service.share(filePath);
     } catch (err) {
-      Alert.alert('Backup Failed', err instanceof Error ? err.message : 'Could not export backup.');
+      showAlert('Backup Failed', err instanceof Error ? err.message : 'Could not export backup.');
     } finally {
       setIsBusy(false);
     }
   };
 
-  const handleDeleteAllData = () => {
-    Alert.alert(
+  const handleRestoreBackup = async () => {
+    if (!db) return;
+
+    const result = await DocumentPicker.getDocumentAsync({
+      type: 'application/json',
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    const asset = result.assets[0];
+
+    const confirmed = await confirmAsync(
+      'Restore Backup',
+      'Restoring replaces all current circles, people, and history with the backup contents. Continue?',
+      { confirmLabel: 'Restore', destructive: true }
+    );
+    if (!confirmed) return;
+
+    setIsBusy(true);
+    try {
+      const service = new BackupService(db);
+      if (Platform.OS === 'web') {
+        // On web the picked document is a File object — read it directly.
+        const file = asset.file;
+        if (!file) throw new Error('Could not read the selected file');
+        await service.importFromString(await file.text());
+      } else {
+        await service.import(asset.uri);
+      }
+      await refresh();
+      showAlert('Backup Restored', 'Your circles and history were restored.');
+      router.replace('/(tabs)');
+    } catch (err) {
+      showAlert('Restore Failed', err instanceof Error ? err.message : 'Could not restore backup.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleDeleteAllData = async () => {
+    const confirmed = await confirmAsync(
       'Delete All Data',
       'This will permanently delete all circles, people, and history. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Everything',
-          style: 'destructive',
-          onPress: async () => {
-            if (!db) return;
-            setIsBusy(true);
-            try {
-              // Delete in dependency order (FK cascade handles child rows)
-              await db.runAsync('DELETE FROM circles', []);
-              await new SettingsRepository(db).deleteAll();
-              router.replace('/(tabs)');
-            } catch (err) {
-              Alert.alert('Error', 'Could not delete all data.');
-            } finally {
-              setIsBusy(false);
-            }
-          },
-        },
-      ]
+      { confirmLabel: 'Delete Everything', destructive: true }
     );
+    if (!confirmed || !db) return;
+
+    setIsBusy(true);
+    try {
+      // FK cascade removes circle_people and reminder_history rows
+      await db.runAsync('DELETE FROM circles', []);
+      await new SettingsRepository(db).deleteAll();
+      await notificationService.cancelAll();
+      router.replace('/(tabs)');
+    } catch {
+      showAlert('Error', 'Could not delete all data.');
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   if (isLoading) return <LoadingView />;
@@ -78,7 +114,7 @@ export default function SettingsScreen() {
             <View style={styles.settingLabel}>
               <Text style={styles.settingTitle}>Detailed Notifications</Text>
               <Text style={styles.settingDesc}>
-                Show the person's name in notification previews
+                Show the person&apos;s name in notification previews
               </Text>
             </View>
             <Switch
@@ -108,8 +144,18 @@ export default function SettingsScreen() {
             testID="export-backup-button"
           >
             <Text style={styles.backupButtonText}>
-              {isBusy ? 'Exporting…' : 'Export Backup'}
+              {isBusy ? 'Working…' : 'Export Backup'}
             </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.restoreButton, isBusy && styles.buttonDisabled]}
+            onPress={handleRestoreBackup}
+            disabled={isBusy}
+            accessibilityRole="button"
+            accessibilityLabel="Restore backup"
+            testID="restore-backup-button"
+          >
+            <Text style={styles.restoreButtonText}>Restore Backup</Text>
           </TouchableOpacity>
         </View>
 
@@ -213,6 +259,17 @@ const styles = StyleSheet.create({
   },
   backupButtonText: {
     color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  restoreButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#4A90E2',
+    marginTop: 10,
+  },
+  restoreButtonText: {
+    color: '#4A90E2',
     fontSize: 15,
     fontWeight: '600',
   },

@@ -114,7 +114,7 @@ export default function OnboardingScreen() {
           This happens on your device only — nothing is sent anywhere.
         </Text>
         <Text style={[styles.bodyText, styles.bodySpacer]}>
-          You'll see a permission prompt from your phone. You can decline and
+          You&apos;ll see a permission prompt from your phone. You can decline and
           add people manually later.
         </Text>
 

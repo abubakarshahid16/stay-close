@@ -8,6 +8,7 @@ jest.mock('expo-notifications');
 jest.mock('expo-file-system');
 jest.mock('expo-sharing');
 jest.mock('expo-router');
+jest.mock('expo-document-picker');
 
 // Silence React Native warnings in tests
 global.console = {

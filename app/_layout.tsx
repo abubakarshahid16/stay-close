@@ -1,8 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { DatabaseProvider } from '../src/context/DatabaseContext';
+import { notificationService } from '../src/services/NotificationService';
 
 export default function RootLayout() {
+  useEffect(() => {
+    // Configure how local notifications are presented while the app is
+    // in the foreground. Safe no-op on web.
+    notificationService.setNotificationHandler();
+  }, []);
+
   return (
     <DatabaseProvider>
       <Stack screenOptions={{ headerShown: false }}>
@@ -13,7 +20,7 @@ export default function RootLayout() {
           options={{ presentation: 'modal', headerShown: true, title: 'New Circle' }}
         />
         <Stack.Screen
-          name="circles/[id]"
+          name="circles/[id]/index"
           options={{ headerShown: true, title: 'Circle' }}
         />
         <Stack.Screen

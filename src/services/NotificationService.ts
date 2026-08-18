@@ -1,16 +1,26 @@
+import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import type { Circle } from '../types/circle';
 import { REMINDER_FREQUENCY_DAYS } from '../types/circle';
 import type { NotificationPrivacy } from '../types/settings';
-
-const NOTIFICATION_HOUR = 9; // 9:00 AM local time
 
 function circleNotificationId(circleId: number): string {
   return `circle-reminder-${circleId}`;
 }
 
 export class NotificationService {
+  /**
+   * Local scheduled notifications are only supported on iOS/Android.
+   * On web every method becomes a safe no-op.
+   */
+  isAvailable(): boolean {
+    return Platform.OS !== 'web';
+  }
+
   async getPermissionStatus(): Promise<{ granted: boolean; status: string }> {
+    if (!this.isAvailable()) {
+      return { granted: false, status: 'unavailable' };
+    }
     const result = await Notifications.getPermissionsAsync();
     return {
       granted: result.granted,
@@ -19,6 +29,9 @@ export class NotificationService {
   }
 
   async requestPermission(): Promise<{ granted: boolean }> {
+    if (!this.isAvailable()) {
+      return { granted: false };
+    }
     const result = await Notifications.requestPermissionsAsync();
     return { granted: result.granted };
   }
@@ -28,6 +41,7 @@ export class NotificationService {
     privacy: NotificationPrivacy = 'private',
     personName?: string
   ): Promise<void> {
+    if (!this.isAvailable()) return;
     const identifier = circleNotificationId(circle.id);
 
     // Cancel any existing notification for this circle
@@ -57,6 +71,7 @@ export class NotificationService {
   }
 
   async cancelForCircle(circleId: number): Promise<void> {
+    if (!this.isAvailable()) return;
     try {
       await Notifications.cancelScheduledNotificationAsync(
         circleNotificationId(circleId)
@@ -67,6 +82,7 @@ export class NotificationService {
   }
 
   async cancelAll(): Promise<void> {
+    if (!this.isAvailable()) return;
     await Notifications.cancelAllScheduledNotificationsAsync();
   }
 
@@ -79,6 +95,7 @@ export class NotificationService {
   }
 
   setNotificationHandler(): void {
+    if (!this.isAvailable()) return;
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,

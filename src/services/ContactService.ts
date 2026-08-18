@@ -1,8 +1,20 @@
+import { Platform } from 'react-native';
 import * as ExpoContacts from 'expo-contacts';
 import type { DeviceContact, ContactPermissionResult } from '../types/contact';
 
 export class ContactService {
+  /**
+   * Device contact access is only available on iOS/Android.
+   * On web the app falls back to manual person entry.
+   */
+  isAvailable(): boolean {
+    return Platform.OS !== 'web';
+  }
+
   async getPermissionStatus(): Promise<ContactPermissionResult> {
+    if (!this.isAvailable()) {
+      return { status: 'denied', granted: false };
+    }
     const result = await ExpoContacts.getPermissionsAsync();
     return {
       status: result.status as ContactPermissionResult['status'],
@@ -11,6 +23,9 @@ export class ContactService {
   }
 
   async requestPermission(): Promise<ContactPermissionResult> {
+    if (!this.isAvailable()) {
+      return { status: 'denied', granted: false };
+    }
     const result = await ExpoContacts.requestPermissionsAsync();
     return {
       status: result.status as ContactPermissionResult['status'],
@@ -19,6 +34,9 @@ export class ContactService {
   }
 
   async loadContacts(): Promise<DeviceContact[]> {
+    if (!this.isAvailable()) {
+      return [];
+    }
     const permission = await this.getPermissionStatus();
     if (!permission.granted) {
       return [];
@@ -47,6 +65,9 @@ export class ContactService {
   }
 
   async refreshContact(contactId: string): Promise<DeviceContact | null> {
+    if (!this.isAvailable()) {
+      return null;
+    }
     try {
       const contact = await ExpoContacts.getContactByIdAsync(contactId, [
         ExpoContacts.Fields.Name,

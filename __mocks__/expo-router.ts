@@ -13,6 +13,8 @@ export const useRouter = jest.fn(() => mockRouter);
 export const useLocalSearchParams = jest.fn(() => ({}));
 export const useSegments = jest.fn(() => []);
 export const usePathname = jest.fn(() => '/');
+export const useFocusEffect = jest.fn();
+export const Redirect = () => null;
 
 export const router = mockRouter;
 
@@ -29,6 +31,8 @@ export const Tabs = {
 export const Slot = () => null;
 
 export default {
+  useFocusEffect,
+  Redirect,
   useRouter,
   useLocalSearchParams,
   useSegments,

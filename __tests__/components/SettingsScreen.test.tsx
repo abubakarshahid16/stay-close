@@ -2,7 +2,7 @@
  * Component tests for the Settings screen.
  */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import SettingsScreen from '../../app/settings/index';
 
 jest.mock('../../src/context/DatabaseContext', () => ({

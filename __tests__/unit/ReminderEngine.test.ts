@@ -57,7 +57,6 @@ describe('ReminderEngine', () => {
 
   describe('never-suggested priority', () => {
     it('strongly prefers never-suggested person over recently-suggested person', () => {
-      const engine = seeded(42);
       const neverSuggested = makePerson({
         id: 1,
         displayName: 'Alex Example',
@@ -180,7 +179,6 @@ describe('ReminderEngine', () => {
 
   describe('last-suggested exclusion', () => {
     it('excludes last suggested person when alternatives exist', () => {
-      const engine = seeded(99);
       const last = makePerson({ id: 1, displayName: 'Alex Example' });
       const other = makePerson({ id: 2, displayName: 'Jamie Example' });
 
@@ -202,7 +200,6 @@ describe('ReminderEngine', () => {
 
   describe('session exclusion (Someone Else)', () => {
     it('excludes session-excluded people', () => {
-      const engine = seeded(1);
       const p1 = makePerson({ id: 1, displayName: 'Alex Example' });
       const p2 = makePerson({ id: 2, displayName: 'Jamie Example' });
       const p3 = makePerson({ id: 3, displayName: 'Taylor Example' });
