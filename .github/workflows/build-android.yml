@@ -29,6 +29,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Install NDK and CMake
+        run: |
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "ndk;26.1.10909125" \
+            "cmake;3.22.1" \
+            --channel=0 || true
+
       - name: Install dependencies
         run: npm ci
 
@@ -36,6 +43,11 @@ jobs:
         run: npx expo prebuild --platform android --clean --no-install
         env:
           EXPO_NO_TELEMETRY: '1'
+
+      - name: Disable New Architecture (faster, more stable CI builds)
+        run: |
+          sed -i 's/newArchEnabled=true/newArchEnabled=false/' android/gradle.properties || true
+          echo "newArchEnabled=false" >> android/gradle.properties
 
       - name: Make Gradle executable
         run: chmod +x android/gradlew
@@ -49,11 +61,12 @@ jobs:
           key: gradle-${{ hashFiles('android/**/*.gradle*') }}
           restore-keys: gradle-
 
-      - name: Build Debug APK (no signing needed)
+      - name: Build Debug APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
+          ANDROID_NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/26.1.10909125
 
       - name: Rename APK
         run: |
