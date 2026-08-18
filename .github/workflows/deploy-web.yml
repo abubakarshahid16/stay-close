@@ -40,6 +40,7 @@ jobs:
         env:
           NODE_ENV: production
           EXPO_NO_TELEMETRY: '1'
+          CI: '1'
 
       - name: Add SPA fallback for deep links
         run: cp dist/+not-found.html dist/404.html 2>/dev/null || cp dist/index.html dist/404.html
