@@ -42,13 +42,13 @@ jobs:
           EXPO_NO_TELEMETRY: '1'
           CI: '1'
 
-      - name: Add SPA fallback for deep links
-        run: cp dist/+not-found.html dist/404.html 2>/dev/null || cp dist/index.html dist/404.html
+      - name: Add service worker & PWA assets
+        run: |
+          cp public/sw.js dist/sw.js
+          cp dist/index.html dist/404.html 2>/dev/null || true
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v4
-        with:
-          enablement: true
 
       - name: Upload to Pages
         uses: actions/upload-pages-artifact@v3

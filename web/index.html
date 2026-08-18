@@ -2,68 +2,250 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Stay Close</title>
-  <meta name="theme-color" content="#7C3AED" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+  <meta name="theme-color" content="#4A90E2" />
   <meta name="description" content="A private relationship reminder. No cloud, no tracking." />
+
+  <!-- PWA / iOS -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Stay Close" />
+  <link rel="apple-touch-icon" href="/stay-close/assets/icon.png" />
   <link rel="manifest" href="/stay-close/manifest.json" />
+
+  <title>Stay Close</title>
+
   <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    html,body{height:100%;background:#F7F6FB}
-    #splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#F7F6FB;transition:opacity .4s ease}
-    #splash.hidden{opacity:0;pointer-events:none}
-    .icon{width:88px;height:88px;background:#7C3AED;border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:44px;margin-bottom:20px;box-shadow:0 8px 32px rgba(124,58,237,.25)}
-    .title{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:26px;font-weight:700;color:#1a1a2e;margin-bottom:6px}
-    .sub{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#888;margin-bottom:32px}
-    #install-btn{display:none;align-items:center;gap:10px;background:#7C3AED;color:#fff;border:none;border-radius:14px;padding:14px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(124,58,237,.35);margin-bottom:20px}
-    #install-btn.visible{display:flex}
-    #ios-hint{display:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#999;text-align:center;line-height:1.6;max-width:240px;margin-bottom:20px}
-    #ios-hint.visible{display:block}
-    .spinner{width:28px;height:28px;border:3px solid #E9E6F5;border-top-color:#7C3AED;border-radius:50%;animation:spin .8s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    #root{height:100%}
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #F9F9F9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    /* ── Splash (hides once React mounts) ── */
+    #splash {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #4A90E2;
+      transition: opacity 0.4s ease;
+    }
+    #splash.hide { opacity: 0; pointer-events: none; }
+    #splash-logo {
+      width: 96px; height: 96px; border-radius: 22px;
+      background: white; display: flex; align-items: center; justify-content: center;
+      font-size: 48px; margin-bottom: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+    #splash h1 { color: white; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    #splash p  { color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 6px; }
+    #splash-spinner {
+      margin-top: 40px; width: 32px; height: 32px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white; border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Install Banner ── */
+    #install-banner {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 8888;
+      background: white;
+      border-top: 1px solid #e5e7eb;
+      padding: 16px 20px 20px;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.10);
+      display: none;
+      animation: slideUp 0.35s cubic-bezier(.16,1,.3,1);
+    }
+    #install-banner.show { display: block; }
+    @keyframes slideUp { from { transform: translateY(100%); opacity:0; } to { transform: translateY(0); opacity:1; } }
+
+    #install-banner .ib-row {
+      display: flex; align-items: center; gap: 14px;
+    }
+    #install-banner .ib-icon {
+      width: 52px; height: 52px; border-radius: 12px;
+      background: #4A90E2; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+    }
+    #install-banner .ib-text { flex: 1; min-width: 0; }
+    #install-banner .ib-text strong { display: block; font-size: 15px; font-weight: 700; color: #111; }
+    #install-banner .ib-text span   { display: block; font-size: 13px; color: #666; margin-top: 2px; }
+
+    #install-btn {
+      background: #4A90E2; color: white; border: none; border-radius: 12px;
+      padding: 12px 20px; font-size: 15px; font-weight: 700;
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #install-btn:active { background: #3a7bd5; }
+
+    #install-banner .ib-close {
+      position: absolute; top: 12px; right: 16px;
+      background: none; border: none; font-size: 20px;
+      color: #aaa; cursor: pointer; line-height: 1;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── iOS Modal ── */
+    #ios-modal-overlay {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,0.5); display: none;
+      align-items: flex-end; justify-content: center;
+    }
+    #ios-modal-overlay.show { display: flex; }
+    #ios-modal {
+      background: white; border-radius: 20px 20px 0 0;
+      padding: 24px 24px 40px; width: 100%; max-width: 480px;
+      animation: slideUp 0.35s cubic-bezier(.16,1,.3,1);
+    }
+    #ios-modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    #ios-modal p  { font-size: 14px; color: #555; margin-bottom: 20px; line-height: 1.5; }
+    .ios-step {
+      display: flex; align-items: flex-start; gap: 14px;
+      margin-bottom: 16px;
+    }
+    .ios-step-num {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: #4A90E2; color: white;
+      font-size: 14px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .ios-step-text { font-size: 15px; color: #222; line-height: 1.4; }
+    .ios-step-text strong { color: #4A90E2; }
+    #ios-modal-close {
+      width: 100%; margin-top: 20px;
+      background: #f3f4f6; color: #333; border: none;
+      border-radius: 12px; padding: 14px;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+    }
+
+    /* Main app wrapper */
+    #root { height: 100%; }
   </style>
 </head>
 <body>
+  <!-- Splash screen — visible immediately, no JS needed -->
   <div id="splash">
-    <div class="icon">🤝</div>
-    <div class="title">Stay Close</div>
-    <div class="sub">Your private relationship reminder</div>
-    <button id="install-btn"><span>⬇️</span> Install App</button>
-    <div id="ios-hint">Tap the <strong>Share</strong> button below,<br/>then <strong>Add to Home Screen</strong></div>
-    <div class="spinner"></div>
+    <div id="splash-logo">💚</div>
+    <h1>Stay Close</h1>
+    <p>Your private relationship reminder</p>
+    <div id="splash-spinner"></div>
   </div>
+
+  <!-- PWA Install Banner -->
+  <div id="install-banner">
+    <button class="ib-close" id="install-close" aria-label="Close">✕</button>
+    <div class="ib-row">
+      <div class="ib-icon">💚</div>
+      <div class="ib-text">
+        <strong>Install Stay Close</strong>
+        <span>Add to your home screen — works offline</span>
+      </div>
+      <button id="install-btn">Install</button>
+    </div>
+  </div>
+
+  <!-- iOS Add to Home Screen Modal -->
+  <div id="ios-modal-overlay" id="ios-overlay">
+    <div id="ios-modal">
+      <h2>📲 Add to Home Screen</h2>
+      <p>Install Stay Close like an app — no App Store needed.</p>
+      <div class="ios-step">
+        <div class="ios-step-num">1</div>
+        <div class="ios-step-text">Tap the <strong>Share</strong> button (□↑) at the bottom of Safari</div>
+      </div>
+      <div class="ios-step">
+        <div class="ios-step-num">2</div>
+        <div class="ios-step-text">Scroll down and tap <strong>"Add to Home Screen"</strong></div>
+      </div>
+      <div class="ios-step">
+        <div class="ios-step-num">3</div>
+        <div class="ios-step-text">Tap <strong>"Add"</strong> — done! Open it from your home screen</div>
+      </div>
+      <button id="ios-modal-close">Got it</button>
+    </div>
+  </div>
+
   <div id="root"></div>
+
   <script>
-    // Register service worker for instant repeat loads
+    // ── Service Worker ──
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/stay-close/sw.js', {scope: '/stay-close/'});
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/stay-close/sw.js', { scope: '/stay-close/' }).catch(() => {});
+      });
     }
-    var deferredPrompt = null;
-    var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    var isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-    if (isIOS && !isStandalone) document.getElementById('ios-hint').classList.add('visible');
-    window.addEventListener('beforeinstallprompt', function(e) {
-      e.preventDefault(); deferredPrompt = e;
-      document.getElementById('install-btn').classList.add('visible');
-    });
-    document.getElementById('install-btn').addEventListener('click', function() {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(function() { deferredPrompt = null; document.getElementById('install-btn').classList.remove('visible'); });
-    });
-    var observer = new MutationObserver(function() {
-      var root = document.getElementById('root');
+
+    // ── Hide splash when React app mounts ──
+    const splash = document.getElementById('splash');
+    const observer = new MutationObserver(() => {
+      const root = document.getElementById('root');
       if (root && root.children.length > 0) {
-        var splash = document.getElementById('splash');
-        if (splash) { splash.classList.add('hidden'); setTimeout(function(){splash.remove();},500); }
+        splash.classList.add('hide');
+        setTimeout(() => { splash.style.display = 'none'; }, 500);
         observer.disconnect();
       }
     });
-    observer.observe(document.getElementById('root'), {childList:true,subtree:true});
+    observer.observe(document.getElementById('root'), { childList: true, subtree: true });
+    // Fallback: hide splash after 8s even if React is slow
+    setTimeout(() => { splash.classList.add('hide'); }, 8000);
+
+    // ── PWA Install Logic ──
+    const banner  = document.getElementById('install-banner');
+    const btn     = document.getElementById('install-btn');
+    const closeBtn= document.getElementById('install-close');
+    const iosOverlay = document.getElementById('ios-modal-overlay');
+    const iosClose   = document.getElementById('ios-modal-close');
+
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isInStandalone = window.matchMedia('(display-mode: standalone)').matches
+                        || window.navigator.standalone;
+
+    let deferredPrompt = null;
+
+    // Android Chrome: capture install prompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (!isInStandalone) {
+        // Show after 2s so it doesn't feel intrusive
+        setTimeout(() => banner.classList.add('show'), 2000);
+      }
+    });
+
+    btn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        banner.classList.remove('show');
+      }
+    });
+
+    closeBtn.addEventListener('click', () => banner.classList.remove('show'));
+
+    // iOS Safari: show instructions
+    if (isIOS && !isInStandalone) {
+      setTimeout(() => {
+        banner.querySelector('.ib-text strong').textContent = 'Add to Home Screen';
+        banner.querySelector('.ib-text span').textContent = 'Install Stay Close like an app';
+        btn.textContent = 'How?';
+        btn.onclick = () => {
+          banner.classList.remove('show');
+          iosOverlay.classList.add('show');
+        };
+        banner.classList.add('show');
+      }, 2000);
+    }
+
+    iosClose.addEventListener('click', () => iosOverlay.classList.remove('show'));
+    iosOverlay.addEventListener('click', (e) => {
+      if (e.target === iosOverlay) iosOverlay.classList.remove('show');
+    });
+
+    // App installed: hide banner
+    window.addEventListener('appinstalled', () => banner.classList.remove('show'));
   </script>
 </body>
 </html>

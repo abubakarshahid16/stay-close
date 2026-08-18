@@ -1,32 +1,54 @@
-const CACHE = 'stay-close-v2';
+// Stay Close — Service Worker
+// Cache-first for assets, network-first for navigation
 
-self.addEventListener('install', e => {
-  self.skipWaiting();
+const CACHE = 'stay-close-v1';
+const BASE  = '/stay-close';
+
+const PRECACHE = [
+  BASE + '/',
+  BASE + '/index.html',
+  BASE + '/manifest.json',
+];
+
+self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(['/stay-close/', '/stay-close/index.html']))
+    caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener('activate', e => e.waitUntil(
-  caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-  ).then(() => clients.claim())
-));
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
 
-// Cache-first for assets, network-first for HTML
-self.addEventListener('fetch', e => {
+self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET') return;
-  if (url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
+  // Skip non-GET and cross-origin
+  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+
+  const isNav = e.request.mode === 'navigate';
+  const isAsset = /\.(js|css|png|jpg|jpeg|gif|webp|woff2?|wasm)$/.test(url.pathname);
+
+  if (isNav) {
+    // Network-first for navigation (fresh HTML)
     e.respondWith(
-      fetch(e.request).then(r => { caches.open(CACHE).then(c => c.put(e.request, r.clone())); return r; })
-      .catch(() => caches.match(e.request))
+      fetch(e.request)
+        .then(res => { caches.open(CACHE).then(c => c.put(e.request, res.clone())); return res; })
+        .catch(() => caches.match(e.request).then(r => r || caches.match(BASE + '/')))
     );
-  } else {
+  } else if (isAsset) {
+    // Cache-first for assets (JS/CSS/images don't change without new filename)
     e.respondWith(
-      caches.match(e.request).then(cached => cached || fetch(e.request).then(r => {
-        caches.open(CACHE).then(c => c.put(e.request, r.clone())); return r;
-      }))
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(res => {
+          caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+          return res;
+        });
+      })
     );
   }
 });
