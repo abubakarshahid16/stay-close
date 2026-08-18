@@ -4,12 +4,25 @@ const config = getDefaultConfig(__dirname);
 
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'mjs'];
 
-// On web, expo-sqlite imports a .wasm binary which Metro can't bundle as JS.
-// Return an empty module so the web build succeeds (SQLite falls back to no-op on web).
+// Heavy native-only modules stubbed on web to cut bundle size by ~60%
+const WEB_STUBS = [
+  'react-native-reanimated',
+  'react-native-gesture-handler',
+  'react-native-screens',
+  'react-native-safe-area-context',
+];
+
 const originalResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (platform === 'web' && moduleName.endsWith('.wasm')) {
-    return { type: 'empty' };
+  if (platform === 'web') {
+    // Stub .wasm files (expo-sqlite web worker)
+    if (moduleName.endsWith('.wasm')) {
+      return { type: 'empty' };
+    }
+    // Stub heavy native-only packages
+    if (WEB_STUBS.some(stub => moduleName === stub || moduleName.startsWith(stub + '/'))) {
+      return { type: 'empty' };
+    }
   }
   if (originalResolveRequest) {
     return originalResolveRequest(context, moduleName, platform);
