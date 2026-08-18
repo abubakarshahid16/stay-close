@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
 
 jobs:
   build-apk:
@@ -28,21 +29,10 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: 11076708
-          accept-android-sdk-licenses: true
-
-      - name: Install SDK packages
-        run: |
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" \
-            "ndk;26.1.10909125" "cmake;3.22.1"
-
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate native Android project
+      - name: Generate Android project
         run: npx expo prebuild --platform android --clean --no-install
         env:
           EXPO_NO_TELEMETRY: '1'
@@ -56,22 +46,20 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-
+          key: gradle-${{ hashFiles('android/**/*.gradle*') }}
+          restore-keys: gradle-
 
-      - name: Build Release APK
+      - name: Build Debug APK (no signing needed)
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: ./gradlew assembleDebug --no-daemon
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
-          ANDROID_NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/26.1.10909125
 
       - name: Rename APK
         run: |
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk stay-close-${{ github.ref_name }}.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk stay-close-${{ github.ref_name }}.apk
 
-      - name: Publish GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: Stay Close ${{ github.ref_name }}
@@ -91,3 +79,4 @@ jobs:
             ---
             🔒 **Privacy**: No internet permission. Your contacts never leave your device.
           files: stay-close-${{ github.ref_name }}.apk
+          tag_name: ${{ github.ref_name }}
