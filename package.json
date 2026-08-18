@@ -1,6 +1,6 @@
 {
   "name": "stay-close",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "expo-router/entry",
   "private": true,
   "scripts": {
@@ -8,6 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "export:web": "expo export --platform web",
     "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "jest --testPathPattern='__tests__/(unit|components)' --passWithNoTests",

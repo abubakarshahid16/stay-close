@@ -58,7 +58,23 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
 
-      - name: Sign APK
+      # Expo's generated Android project signs release builds with the debug
+      # keystore by default, so the APK below is installable as-is. If release
+      # signing secrets are configured, we re-sign with the real key instead.
+      - name: Check for signing secrets
+        id: keycheck
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "have_keys=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "have_keys=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No ANDROID_KEYSTORE_BASE64 secret set — publishing the default-signed APK."
+          fi
+
+      - name: Sign APK with release key
+        if: steps.keycheck.outputs.have_keys == 'true'
         uses: r0adkll/sign-android-release@v1
         id: sign
         with:
@@ -68,9 +84,13 @@ jobs:
           keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      - name: Rename APK
+      - name: Collect APK
         run: |
-          mv "${{ steps.sign.outputs.signedReleaseFile }}" stay-close-${{ github.ref_name }}.apk
+          if [ "${{ steps.keycheck.outputs.have_keys }}" = "true" ]; then
+            mv "${{ steps.sign.outputs.signedReleaseFile }}" stay-close-${{ github.ref_name }}.apk
+          else
+            mv android/app/build/outputs/apk/release/app-release.apk stay-close-${{ github.ref_name }}.apk
+          fi
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

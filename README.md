@@ -33,6 +33,16 @@ You have people in your life who matter — family, old friends, mentors, collea
 - **Backup & restore** — Export your data as a JSON file; import it anytime
 - **Zero internet** — No network calls, ever. Nothing leaves your phone.
 
+## 📸 Screenshots
+
+| Onboarding | Create a Circle |
+|---|---|
+| ![Onboarding welcome](docs/screenshots/onboarding-welcome.png) | ![Create circle](docs/screenshots/create-circle.png) |
+
+| Today's Suggestion | Manage a Circle |
+|---|---|
+| ![Home suggestion](docs/screenshots/home-suggestion.png) | ![Circle detail](docs/screenshots/circle-detail.png) |
+
 ## 📱 Install
 
 ### Android (recommended)
