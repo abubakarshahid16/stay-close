@@ -37,14 +37,25 @@ jobs:
         env:
           EXPO_NO_TELEMETRY: '1'
 
-      - name: Patch gradle.properties for CI
+      - name: Patch Android project for CI
         run: |
+          # Find the first installed NDK version and use it
+          NDK_VERSION=$(ls $ANDROID_HOME/ndk/ 2>/dev/null | sort -V | tail -1)
+          echo "Using NDK: $NDK_VERSION"
+          if [ -n "$NDK_VERSION" ]; then
+            # Replace ndkVersion in build.gradle with the installed version
+            sed -i "s/ndkVersion .*/ndkVersion "$NDK_VERSION"/" android/build.gradle || true
+          fi
+
+          # Append CI-friendly settings to gradle.properties
           cat >> android/gradle.properties << 'PROPS'
           newArchEnabled=false
-          hermesEnabled=true
           org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m
           org.gradle.daemon=false
           PROPS
+
+          echo "=== NDK available ===" && ls $ANDROID_HOME/ndk/ || true
+          echo "=== ndkVersion in build.gradle ===" && grep ndkVersion android/build.gradle || true
 
       - name: Make Gradle executable
         run: chmod +x android/gradlew
@@ -60,14 +71,14 @@ jobs:
 
       - name: Build Debug APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
 
       - name: Find and copy APK
         run: |
           APK=$(find android/app/build/outputs/apk -name "*.apk" | head -1)
-          echo "Found APK: $APK"
+          echo "Found: $APK"
           cp "$APK" stay-close-${{ github.ref_name }}.apk
 
       - name: Create GitHub Release
