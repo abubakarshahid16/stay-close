@@ -29,12 +29,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Show available Android tools
-        run: |
-          echo "=== NDK versions ===" && ls $ANDROID_HOME/ndk/ 2>/dev/null || echo "none"
-          echo "=== CMake versions ===" && ls $ANDROID_HOME/cmake/ 2>/dev/null || echo "none"
-          echo "=== SDK Root ===" && echo $ANDROID_HOME
-
       - name: Install dependencies
         run: npm ci
 
@@ -51,11 +45,6 @@ jobs:
           org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m
           org.gradle.daemon=false
           PROPS
-          echo "--- gradle.properties ---"
-          cat android/gradle.properties
-
-      - name: Show build.gradle NDK version
-        run: grep -r "ndkVersion" android/ || echo "no ndkVersion found"
 
       - name: Make Gradle executable
         run: chmod +x android/gradlew
@@ -71,29 +60,34 @@ jobs:
 
       - name: Build Debug APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --info 2>&1 | tail -100
+        run: ./gradlew assembleDebug --no-daemon
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
 
-      - name: Rename APK
+      - name: Find and copy APK
         run: |
-          find android/app/build/outputs/apk -name "*.apk" | head -5
-          cp android/app/build/outputs/apk/debug/app-debug.apk stay-close-${{ github.ref_name }}.apk
+          APK=$(find android/app/build/outputs/apk -name "*.apk" | head -1)
+          echo "Found APK: $APK"
+          cp "$APK" stay-close-${{ github.ref_name }}.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: Stay Close ${{ github.ref_name }}
           body: |
-            ## Install Stay Close ${{ github.ref_name }}
+            ## 📱 Install Stay Close ${{ github.ref_name }}
 
             ### Android — Direct Download
-            1. [Download APK](https://github.com/abubakarshahid16/stay-close/releases/latest/download/stay-close-${{ github.ref_name }}.apk)
+            1. **[⬇️ Download APK](https://github.com/abubakarshahid16/stay-close/releases/latest/download/stay-close-${{ github.ref_name }}.apk)**
             2. Open the file on your Android phone
-            3. Allow "Install unknown apps" if prompted
-            4. Tap Install
+            3. Allow "Install unknown apps" if prompted (one-time only)
+            4. Tap Install — done!
 
-            ### Web / iPhone
-            https://abubakarshahid16.github.io/stay-close
+            ### Web / iPhone / iPad
+            Open: **https://abubakarshahid16.github.io/stay-close**
+            On iPhone: Share → Add to Home Screen
+
+            ---
+            🔒 No internet permission. Your contacts never leave your device.
           files: stay-close-${{ github.ref_name }}.apk
           tag_name: ${{ github.ref_name }}
