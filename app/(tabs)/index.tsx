@@ -22,7 +22,6 @@ import { CirclePeopleRepository } from '../../src/db/repositories/CirclePeopleRe
 import { ReminderHistoryRepository } from '../../src/db/repositories/ReminderHistoryRepository';
 import { ReminderEngine } from '../../src/services/ReminderEngine';
 import type { Circle, CirclePerson } from '../../src/types/circle';
-import type { ReminderSuggestion } from '../../src/types/reminder';
 
 interface ActiveSuggestion {
   circle: Circle;
@@ -61,12 +60,12 @@ export default function HomeScreen() {
       }
 
       const lastPersonId = await historyRepo.getLastSuggestedPersonId(circle.id);
-      const result: ReminderSuggestion | null = engine.select(
+      const result: CirclePerson | null = engine.select(
         people,
         circle.reminderFrequency,
         lastPersonId,
-        Array.from(sessionExcluded),
-        new Date()
+        sessionExcluded,
+        new Date().toISOString()
       );
 
       if (!result) {
@@ -78,12 +77,12 @@ export default function HomeScreen() {
       // Record the suggestion as 'shown'
       const history = await historyRepo.record({
         circleId: circle.id,
-        circlePersonId: result.person.id,
+        circlePersonId: result.id,
         action: 'shown',
       });
-      await peopleRepo.recordSuggestion(result.person.id, history.suggestedAt);
+      await peopleRepo.recordSuggestion(result.id, history.suggestedAt);
 
-      setSuggestion({ circle, person: result.person, historyId: history.id });
+      setSuggestion({ circle, person: result, historyId: history.id });
     } catch {
       setSuggestion(null);
     } finally {
