@@ -42,10 +42,19 @@ jobs:
           EXPO_NO_TELEMETRY: '1'
           CI: '1'
 
-      - name: Add service worker & PWA assets
+      - name: Add PWA assets (manifest, icons, service worker)
         run: |
+          # Icons are generated (not committed) — zero-dependency PNG encoder.
+          node scripts/gen-icons.mjs
           cp public/sw.js dist/sw.js
-          cp dist/index.html dist/404.html 2>/dev/null || true
+          cp public/manifest.json dist/manifest.json
+          mkdir -p dist/icons
+          cp public/icons/*.png dist/icons/
+          # Inject splash screen + install banner into the exported HTML.
+          # Expo Router ignores web/index.html, so this must happen post-export.
+          node scripts/inject-pwa.mjs
+          # GitHub Pages serves 404.html for unknown paths -> SPA deep links work.
+          cp dist/index.html dist/404.html
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v4
