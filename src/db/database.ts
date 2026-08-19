@@ -8,7 +8,20 @@ let _db: SQLite.SQLiteDatabase | null = null;
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (_db) return _db;
-  _db = await openDatabase();
+  try {
+    _db = await openDatabase();
+  } catch (err) {
+    // On web, the OPFS file lock from a just-closed tab/reload can briefly
+    // still be held when the new page tries to open it — retry once after
+    // a short delay so that transient race doesn't surface as a hard error.
+    const message = err instanceof Error ? err.message : String(err);
+    if (/Access Handle|NoModificationAllowedError/i.test(message)) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      _db = await openDatabase();
+    } else {
+      throw err;
+    }
+  }
   return _db;
 }
 
