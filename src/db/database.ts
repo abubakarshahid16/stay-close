@@ -11,16 +11,13 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   try {
     _db = await openDatabase();
   } catch (err) {
-    // On web, the OPFS file lock from a just-closed tab/reload can briefly
-    // still be held when the new page tries to open it — retry once after
-    // a short delay so that transient race doesn't surface as a hard error.
-    const message = err instanceof Error ? err.message : String(err);
-    if (/Access Handle|NoModificationAllowedError/i.test(message)) {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      _db = await openDatabase();
-    } else {
-      throw err;
-    }
+    // On web, the OPFS file lock/worker state from a just-closed tab or
+    // navigation can briefly be inconsistent when the new page tries to
+    // open it (various error shapes: "Access Handle", "NoModificationAllowedError",
+    // "Invalid VFS state", etc). Retry once after a short delay so that
+    // transient race doesn't surface as a hard error to the user.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    _db = await openDatabase();
   }
   return _db;
 }
