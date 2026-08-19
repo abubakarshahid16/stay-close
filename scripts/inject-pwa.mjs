@@ -54,28 +54,19 @@ const HEAD = `
           var already = false;
           try { already = sessionStorage.getItem(KEY) === '1'; } catch (e) {}
           if (!already) {
-            var reloaded = false;
-            var doReload = function () {
-              if (reloaded) return;
-              reloaded = true;
+            var done = false;
+            var reload = function () {
+              if (done) return;
+              done = true;
               try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
               window.location.reload();
             };
-            navigator.serviceWorker.addEventListener('controllerchange', doReload);
-            // Fallback: on a brand-new install, some browsers never fire
-            // controllerchange for the very first client claimed right after
-            // activate — poll for a controller directly instead of relying
-            // solely on the event, so first-time visitors still self-heal.
-            var tries = 0;
-            var poll = setInterval(function () {
-              tries++;
-              if (navigator.serviceWorker.controller) {
-                clearInterval(poll);
-                doReload();
-              } else if (tries > 20) {
-                clearInterval(poll);
-              }
-            }, 500);
+            navigator.serviceWorker.addEventListener('controllerchange', reload);
+            // Guaranteed fallback: some browsers never fire controllerchange
+            // for the very first client claimed right after activate, so
+            // also just reload once after a short delay no matter what.
+            // Gated by sessionStorage above, so this only ever happens once.
+            setTimeout(reload, 1500);
           }
         }
       }
