@@ -30,6 +30,8 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         setIsReady(true);
       })
       .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('[DatabaseContext] getDatabase failed:', err);
         setError(err instanceof Error ? err : new Error(String(err)));
         setIsReady(true);
       });
