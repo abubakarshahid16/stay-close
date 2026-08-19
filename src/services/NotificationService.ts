@@ -5,21 +5,22 @@ import { REMINDER_FREQUENCY_DAYS } from '../types/circle';
 import type { NotificationPrivacy } from '../types/settings';
 
 function circleNotificationId(circleId: number): string {
-  return `circle-reminder-${circleId}`;
+  return \`circle-reminder-\${circleId}\`;
 }
 
 export class NotificationService {
-  /**
-   * Local scheduled notifications are only supported on iOS/Android.
-   * On web every method becomes a safe no-op.
-   */
   isAvailable(): boolean {
     return Platform.OS !== 'web';
   }
 
+  isWebSupported(): boolean {
+    return Platform.OS === 'web' && typeof Notification !== 'undefined';
+  }
+
   async getPermissionStatus(): Promise<{ granted: boolean; status: string }> {
-    if (!this.isAvailable()) {
-      return { granted: false, status: 'unavailable' };
+    if (Platform.OS === 'web') {
+      if (!this.isWebSupported()) return { granted: false, status: 'unavailable' };
+      return { granted: Notification.permission === 'granted', status: Notification.permission };
     }
     const result = await Notifications.getPermissionsAsync();
     return {
@@ -29,11 +30,28 @@ export class NotificationService {
   }
 
   async requestPermission(): Promise<{ granted: boolean }> {
-    if (!this.isAvailable()) {
-      return { granted: false };
+    if (Platform.OS === 'web') {
+      if (!this.isWebSupported()) return { granted: false };
+      const permission = await Notification.requestPermission();
+      return { granted: permission === 'granted' };
     }
     const result = await Notifications.requestPermissionsAsync();
     return { granted: result.granted };
+  }
+
+  showWebNotificationNow(
+    privacy: NotificationPrivacy = 'private',
+    personName?: string
+  ): void {
+    if (!this.isWebSupported() || Notification.permission !== 'granted') return;
+    const body =
+      privacy === 'detailed' && personName
+        ? \`Maybe reach out to \${personName} today.\`
+        : 'You have someone to reconnect with.';
+    try {
+      new Notification('Stay Close', { body, tag: 'stay-close-suggestion' });
+    } catch {
+    }
   }
 
   async scheduleForCircle(
@@ -43,18 +61,13 @@ export class NotificationService {
   ): Promise<void> {
     if (!this.isAvailable()) return;
     const identifier = circleNotificationId(circle.id);
-
-    // Cancel any existing notification for this circle
     await this.cancelForCircle(circle.id);
-
     const days = REMINDER_FREQUENCY_DAYS[circle.reminderFrequency];
     const intervalSeconds = days * 24 * 60 * 60;
-
     const body =
       privacy === 'detailed' && personName
-        ? `Maybe reach out to ${personName} today.`
+        ? \`Maybe reach out to \${personName} today.\`
         : 'You have someone to reconnect with.';
-
     await Notifications.scheduleNotificationAsync({
       identifier,
       content: {
@@ -77,7 +90,6 @@ export class NotificationService {
         circleNotificationId(circleId)
       );
     } catch {
-      // Notification may not exist — that's fine
     }
   }
 
