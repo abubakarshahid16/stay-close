@@ -1,5 +1,5 @@
 /**
- * Home screen — shows today's reminder suggestion.
+ * Home screen â shows today's reminder suggestion.
  * One person from one circle is suggested based on the weighted algorithm.
  */
 import React, { useCallback, useEffect, useState } from 'react';
@@ -20,6 +20,7 @@ import { LoadingView } from '../../src/components/LoadingView';
 import { CirclePeopleRepository } from '../../src/db/repositories/CirclePeopleRepository';
 import { ReminderHistoryRepository } from '../../src/db/repositories/ReminderHistoryRepository';
 import { ReminderEngine } from '../../src/services/ReminderEngine';
+import { notificationService } from '../../src/services/NotificationService';
 import type { Circle, CirclePerson } from '../../src/types/circle';
 
 interface ActiveSuggestion {
@@ -56,7 +57,7 @@ export default function HomeScreen() {
       const historyRepo = new ReminderHistoryRepository(db);
       const engine = new ReminderEngine();
 
-      // Rotate through circles — pick the one with the most overdue suggestion
+      // Rotate through circles â pick the one with the most overdue suggestion
       let chosenCircle: Circle | null = null;
       let chosenPeople: CirclePerson[] = [];
       for (const circle of circles) {
@@ -98,12 +99,13 @@ export default function HomeScreen() {
       await peopleRepo.recordSuggestion(result.id, history.suggestedAt);
 
       setSuggestion({ circle: chosenCircle, person: result, historyId: history.id });
+      notificationService.showWebNotificationNow(settings.notificationPrivacy, result.displayName);
     } catch {
       setSuggestion(null);
     } finally {
       setSuggestionLoading(false);
     }
-  }, [db, circles, sessionExcluded]);
+  }, [db, circles, sessionExcluded, settings.notificationPrivacy]);
 
   useEffect(() => {
     if (isReady && !circlesLoading && !settingsLoading) {
@@ -184,9 +186,9 @@ export default function HomeScreen() {
             style={[styles.actionButton, styles.doneButton]}
             onPress={handleDone}
             accessibilityRole="button"
-            accessibilityLabel="Mark as done — I reached out"
+            accessibilityLabel="Mark as done â I reached out"
           >
-            <Text style={styles.doneButtonText}>Done — I reached out ✓</Text>
+            <Text style={styles.doneButtonText}>Done â I reached out â</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -228,7 +230,7 @@ function EmptyState({ onCreateCircle }: { onCreateCircle: () => void }) {
         <Text style={styles.header}>Stay Close</Text>
         <Text style={styles.emptyTitle}>Create your first circle</Text>
         <Text style={styles.emptyBody}>
-          A circle is a group of people you want to stay in touch with — family, friends, colleagues.
+          A circle is a group of people you want to stay in touch with â family, friends, colleagues.
         </Text>
         <TouchableOpacity
           style={[styles.actionButton, styles.doneButton]}
