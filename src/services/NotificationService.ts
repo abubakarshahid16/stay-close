@@ -5,7 +5,7 @@ import { REMINDER_FREQUENCY_DAYS } from '../types/circle';
 import type { NotificationPrivacy } from '../types/settings';
 
 function circleNotificationId(circleId: number): string {
-  return \`circle-reminder-\${circleId}\`;
+  return `circle-reminder-${circleId}`;
 }
 
 export class NotificationService {
@@ -46,7 +46,7 @@ export class NotificationService {
     if (!this.isWebSupported() || Notification.permission !== 'granted') return;
     const body =
       privacy === 'detailed' && personName
-        ? \`Maybe reach out to \${personName} today.\`
+        ? `Maybe reach out to ${personName} today.`
         : 'You have someone to reconnect with.';
     try {
       new Notification('Stay Close', { body, tag: 'stay-close-suggestion' });
@@ -66,7 +66,7 @@ export class NotificationService {
     const intervalSeconds = days * 24 * 60 * 60;
     const body =
       privacy === 'detailed' && personName
-        ? \`Maybe reach out to \${personName} today.\`
+        ? `Maybe reach out to ${personName} today.`
         : 'You have someone to reconnect with.';
     await Notifications.scheduleNotificationAsync({
       identifier,
