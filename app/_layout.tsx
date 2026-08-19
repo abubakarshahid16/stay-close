@@ -7,7 +7,7 @@ import { ErrorView } from '../src/components/ErrorView';
 import { LoadingView } from '../src/components/LoadingView';
 
 function AppContent() {
-  const { isReady, error } = useDatabase();
+  const { isReady, error, retry } = useDatabase();
 
   // Register notification handler for foreground notifications (iOS)
   useEffect(() => {
@@ -19,7 +19,8 @@ function AppContent() {
   if (error) {
     return (
       <ErrorView
-        message="Database failed to open. Try reinstalling the app."
+        message="Stay Close couldn't open your data. This usually happens when the app is open in another tab or window at the same time — close it there, then try again."
+        onRetry={retry}
       />
     );
   }
