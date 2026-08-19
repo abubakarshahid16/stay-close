@@ -45,7 +45,7 @@ function AppContent() {
   );
 }
 
-function DatabaseErrorScreen({ onRetry }) {
+function DatabaseErrorScreen({ onRetry }: { onRetry: () => void }) {
   const [isResetting, setIsResetting] = useState(false);
   const IS_WEB = Platform.OS === 'web';
 
