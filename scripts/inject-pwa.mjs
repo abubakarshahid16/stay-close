@@ -49,17 +49,34 @@ const HEAD = `
     try {
       if (window.isSecureContext && 'serviceWorker' in navigator) {
         navigator.serviceWorker.register('${BASE}/sw.js').catch(function () {});
-        if (!window.crossOriginIsolated && !navigator.serviceWorker.controller) {
+        if (!window.crossOriginIsolated) {
           var KEY = 'sc_coi_reloaded';
-          navigator.serviceWorker.addEventListener('controllerchange', function onCC() {
-            navigator.serviceWorker.removeEventListener('controllerchange', onCC);
-            var already = false;
-            try { already = sessionStorage.getItem(KEY) === '1'; } catch (e) {}
-            if (!already) {
+          var already = false;
+          try { already = sessionStorage.getItem(KEY) === '1'; } catch (e) {}
+          if (!already) {
+            var reloaded = false;
+            var doReload = function () {
+              if (reloaded) return;
+              reloaded = true;
               try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
               window.location.reload();
-            }
-          });
+            };
+            navigator.serviceWorker.addEventListener('controllerchange', doReload);
+            // Fallback: on a brand-new install, some browsers never fire
+            // controllerchange for the very first client claimed right after
+            // activate — poll for a controller directly instead of relying
+            // solely on the event, so first-time visitors still self-heal.
+            var tries = 0;
+            var poll = setInterval(function () {
+              tries++;
+              if (navigator.serviceWorker.controller) {
+                clearInterval(poll);
+                doReload();
+              } else if (tries > 20) {
+                clearInterval(poll);
+              }
+            }, 500);
+          }
         }
       }
     } catch (e) {}
