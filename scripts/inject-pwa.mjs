@@ -38,6 +38,33 @@ const HEAD = `
   <meta name="apple-mobile-web-app-title" content="Stay Close" />
   <link rel="apple-touch-icon" href="${BASE}/icons/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="${BASE}/icons/favicon-32.png" />
+  <script>
+  (function () {
+    // Register the service worker as early as possible so it can inject the
+    // COOP/COEP headers GitHub Pages can't send (see public/sw.js). The
+    // very first load before the worker controls the page won't be
+    // cross-origin isolated yet — reload once, right after it takes
+    // control, so the database (which needs SharedArrayBuffer) opens
+    // cleanly instead of failing on that first visit.
+    try {
+      if (window.isSecureContext && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.register('${BASE}/sw.js').catch(function () {});
+        if (!window.crossOriginIsolated && !navigator.serviceWorker.controller) {
+          var KEY = 'sc_coi_reloaded';
+          navigator.serviceWorker.addEventListener('controllerchange', function onCC() {
+            navigator.serviceWorker.removeEventListener('controllerchange', onCC);
+            var already = false;
+            try { already = sessionStorage.getItem(KEY) === '1'; } catch (e) {}
+            if (!already) {
+              try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
+              window.location.reload();
+            }
+          });
+        }
+      }
+    } catch (e) {}
+  })();
+  </script>
   <style>
     #sc-splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;
       align-items:center;justify-content:center;
@@ -185,13 +212,6 @@ const BODY = `
       installed = true;
       banner.classList.remove('sc-show');
     });
-
-    // ---- service worker ----
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('${BASE}/sw.js').catch(function () {});
-      });
-    }
   })();
   </script>`;
 
