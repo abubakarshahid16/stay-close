@@ -1,11 +1,14 @@
 /**
- * Contact selection screen — search contacts, tap to add to circle.
- * Contacts are loaded from the device; only name + phone are used.
- * No contacts are uploaded anywhere.
+ * Add People screen.
+ *
+ * On iOS/Android, this reads the device's native contacts (never uploaded —
+ * everything stays on-device). Web has no such API, so there it's a simple
+ * manual "type a name" form instead — same result, works everywhere.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -20,6 +23,20 @@ import { ContactService } from '../../../src/services/ContactService';
 import { CirclePeopleRepository } from '../../../src/db/repositories/CirclePeopleRepository';
 import { LoadingView } from '../../../src/components/LoadingView';
 import type { DeviceContact } from '../../../src/types/contact';
+import type { CirclePerson } from '../../../src/types/circle';
+
+const IS_WEB = Platform.OS === 'web';
+
+function genLocalId(): string {
+  try {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      return `manual-${crypto.randomUUID()}`;
+    }
+  } catch {
+    // fall through
+  }
+  return `manual-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 export default function SelectContactScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,6 +49,151 @@ export default function SelectContactScreen() {
     return null;
   }
 
+  if (IS_WEB) {
+    return <ManualAddScreen circleId={circleId} />;
+  }
+
+  return <DeviceContactsScreen circleId={circleId} />;
+}
+
+/** Web: no contacts API exists, so people are added by typing a name. */
+function ManualAddScreen({ circleId }: { circleId: number }) {
+  const { db } = useDatabase();
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
+  const [added, setAdded] = useState<CirclePerson[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      if (!db) return;
+      const repo = new CirclePeopleRepository(db);
+      const existing = await repo.findByCircleId(circleId);
+      setAdded(existing);
+      setIsLoading(false);
+    })();
+  }, [db, circleId]);
+
+  const handleAdd = useCallback(async () => {
+    if (!db) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setIsBusy(true);
+    try {
+      const repo = new CirclePeopleRepository(db);
+      const person = await repo.add({
+        circleId,
+        contactIdentifier: genLocalId(),
+        displayName: trimmed,
+        phoneNumber: phone.trim() || null,
+      });
+      setAdded((prev) => [...prev, person].sort((a, b) => a.displayName.localeCompare(b.displayName)));
+      setName('');
+      setPhone('');
+    } catch {
+      Alert.alert('Error', 'Could not add this person.');
+    } finally {
+      setIsBusy(false);
+    }
+  }, [db, circleId, name, phone]);
+
+  const handleRemove = useCallback(
+    async (personId: number) => {
+      if (!db) return;
+      const repo = new CirclePeopleRepository(db);
+      await repo.remove(personId);
+      setAdded((prev) => prev.filter((p) => p.id !== personId));
+    },
+    [db]
+  );
+
+  if (isLoading) return <LoadingView />;
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.form}>
+        <TextInput
+          style={styles.input}
+          value={name}
+          onChangeText={setName}
+          placeholder="Name"
+          placeholderTextColor="#C7C7CC"
+          accessibilityLabel="Person's name"
+          testID="manual-name-input"
+          returnKeyType="next"
+        />
+        <TextInput
+          style={styles.input}
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="Phone number (optional)"
+          placeholderTextColor="#C7C7CC"
+          accessibilityLabel="Phone number"
+          testID="manual-phone-input"
+          keyboardType="phone-pad"
+          returnKeyType="done"
+          onSubmitEditing={handleAdd}
+        />
+        <TouchableOpacity
+          style={[styles.addButton, (!name.trim() || isBusy) && styles.buttonDisabled]}
+          onPress={handleAdd}
+          disabled={!name.trim() || isBusy}
+          accessibilityRole="button"
+          accessibilityLabel="Add person"
+          testID="manual-add-button"
+        >
+          <Text style={styles.addButtonText}>{isBusy ? 'Adding…' : 'Add Person'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={added}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.list}
+        renderItem={({ item }) => (
+          <View style={styles.contactRow}>
+            <View style={styles.contactInfo}>
+              <Text style={styles.contactName}>{item.displayName}</Text>
+              {item.phoneNumber ? (
+                <Text style={styles.contactPhone}>{item.phoneNumber}</Text>
+              ) : null}
+            </View>
+            <TouchableOpacity
+              onPress={() => handleRemove(item.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${item.displayName}`}
+              testID={`remove-person-${item.id}`}
+            >
+              <Text style={styles.removeLabel}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        ListEmptyComponent={
+          <View style={styles.empty} testID="manual-empty">
+            <Text style={styles.emptyText}>No one added yet — type a name above.</Text>
+          </View>
+        }
+      />
+
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.doneButton}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Done adding people"
+          testID="done-button"
+        >
+          <Text style={styles.doneButtonText}>Done</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+/** iOS/Android: read the device's native contact list. */
+function DeviceContactsScreen({ circleId }: { circleId: number }) {
+  const { db } = useDatabase();
   const [contacts, setContacts] = useState<DeviceContact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -181,6 +343,42 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9F9F9',
   },
+  form: {
+    padding: 16,
+    gap: 10,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  input: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  addButton: {
+    backgroundColor: '#4A90E2',
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  removeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF3B30',
+  },
   search: {
     backgroundColor: '#fff',
     borderRadius: 10,
@@ -194,6 +392,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 16,
     gap: 8,
   },
@@ -240,6 +439,8 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 15,
     color: '#8E8E93',
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
   footer: {
     padding: 16,
