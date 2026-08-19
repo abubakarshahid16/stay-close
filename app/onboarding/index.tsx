@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,8 @@ import {
 import { router } from 'expo-router';
 import { useSettings } from '../../src/hooks/useSettings';
 import { ContactService } from '../../src/services/ContactService';
+
+const IS_WEB = Platform.OS === 'web';
 
 type Step = 'welcome' | 'privacy' | 'contacts';
 
@@ -117,40 +120,53 @@ export default function OnboardingScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.content} testID="onboarding-contacts">
         <Text style={styles.title} accessibilityRole="header">
-          Add Your Contacts
+          {IS_WEB ? 'Adding People' : 'Add Your Contacts'}
         </Text>
-        <Text style={styles.bodyText}>
-          Stay Close reads your contacts so you can add people to circles.
-          This happens on your device only — nothing is sent anywhere.
-        </Text>
-        <Text style={[styles.bodyText, styles.bodySpacer]}>
-          You'll see a permission prompt from your phone. You can decline and
-          add people manually later.
-        </Text>
+        {IS_WEB ? (
+          <Text style={[styles.bodyText, styles.bodySpacer]}>
+            The web app can't read your phone's contact list — there's no
+            permission prompt to grant. Instead, you'll add people by typing
+            their name (and phone number, if you want) right inside each
+            circle. Nothing ever leaves your device.
+          </Text>
+        ) : (
+          <>
+            <Text style={styles.bodyText}>
+              Stay Close reads your contacts so you can add people to circles.
+              This happens on your device only — nothing is sent anywhere.
+            </Text>
+            <Text style={[styles.bodyText, styles.bodySpacer]}>
+              You'll see a permission prompt from your phone. You can decline
+              and add people manually later.
+            </Text>
+          </>
+        )}
 
         <TouchableOpacity
           style={[styles.primaryButton, isBusy && styles.buttonDisabled]}
-          onPress={handleContactsRequest}
+          onPress={IS_WEB ? handleSkipContacts : handleContactsRequest}
           disabled={isBusy}
           accessibilityRole="button"
-          accessibilityLabel="Allow contacts access"
+          accessibilityLabel={IS_WEB ? 'Continue' : 'Allow contacts access'}
           testID="allow-contacts-button"
         >
           <Text style={styles.primaryButtonText}>
-            {isBusy ? 'Setting up…' : 'Allow Contacts'}
+            {isBusy ? 'Setting up…' : IS_WEB ? 'Got it' : 'Allow Contacts'}
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.skipButton}
-          onPress={handleSkipContacts}
-          disabled={isBusy}
-          accessibilityRole="button"
-          accessibilityLabel="Skip for now"
-          testID="skip-contacts-button"
-        >
-          <Text style={styles.skipButtonText}>Skip for now</Text>
-        </TouchableOpacity>
+        {!IS_WEB && (
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={handleSkipContacts}
+            disabled={isBusy}
+            accessibilityRole="button"
+            accessibilityLabel="Skip for now"
+            testID="skip-contacts-button"
+          >
+            <Text style={styles.skipButtonText}>Skip for now</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
