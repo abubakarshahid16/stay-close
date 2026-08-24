@@ -14,18 +14,21 @@ env:
   EXPO_NO_TELEMETRY: '1'
 
 jobs:
-  # Everything here is blocking. The previous config marked component tests
-  # continue-on-error and never ran lint or the db suites at all, so a red
-  # build could still look green (issue 005).
+  # Every step is blocking. The previous config never ran lint or the db suites
+  # and marked component tests continue-on-error, so a red build could still
+  # look green (issue 005).
   verify:
-    name: Lint · Typecheck · Unit
+    name: Lint · Typecheck · Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # Node 24: the persistence suite uses the built-in node:sqlite, which is
+      # unflagged from Node 23.4. This replaced better-sqlite3, so CI needs no
+      # native build step at all.
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -37,37 +40,5 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      # Domain, application and simulation suites. No native or platform
-      # dependency, so a failure here is always a real failure.
-      - name: Unit tests
-        run: npm test -- --ci
-
-  adapters:
-    name: Adapter tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      # better-sqlite3 is an optionalDependency needing a native toolchain.
-      # It builds here on ubuntu; contributors without MSVC on Windows can
-      # still run the unit project (docs/ARCHITECTURE.md §7).
-      - name: Install dependencies
-        run: npm ci
-
-      # Forced explicitly: newer npm gates install scripts behind
-      # allow-scripts, so relying on the implicit node-gyp run during install
-      # is not safe. This must succeed here even though it cannot on a Windows
-      # machine without MSVC.
-      - name: Build native SQLite
-        run: npm rebuild better-sqlite3 --foreground-scripts
-
-      - name: Verify native SQLite loads
-        run: node -e "require('better-sqlite3'); console.log('better-sqlite3 OK')"
-
-      - name: Adapter tests
-        run: npm run test:adapters -- --ci --passWithNoTests
+      - name: Test
+        run: npm run test:all -- --ci
