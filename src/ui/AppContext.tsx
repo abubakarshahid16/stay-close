@@ -10,8 +10,10 @@
  */
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+
 import * as Localization from 'expo-localization';
 import { createContainer, type Container } from '../container';
+import { callingCodeForRegion } from '../domain/contact/callingCodes';
 import { openPlatformDriver } from '../adapters/persistence/openPlatformDriver';
 import { prepareDatabase, type DatabaseStatus } from '../adapters/persistence/prepareDatabase';
 import { ExpoContactProvider } from '../adapters/contacts/ExpoContactProvider';
@@ -58,18 +60,7 @@ const AppContext = createContext<AppContextValue>({
  * rather than guessed (src/domain/contact/phone.ts).
  */
 function deviceCallingCode(): string | undefined {
-  const region = Localization.getLocales()[0]?.regionCode ?? undefined;
-  if (!region) return undefined;
-  // A small table rather than a dependency. Unlisted regions fall back to
-  // requiring international-format numbers, which is safe.
-  const codes: Record<string, string> = {
-    GB: '44', US: '1', CA: '1', PK: '92', IN: '91', AE: '971', SA: '966',
-    AU: '61', NZ: '64', IE: '353', DE: '49', FR: '33', ES: '34', IT: '39',
-    NL: '31', SE: '46', NO: '47', DK: '45', ZA: '27', NG: '234', KE: '254',
-    EG: '20', TR: '90', BD: '880', LK: '94', MY: '60', SG: '65', ID: '62',
-    PH: '63', JP: '81', KR: '82', CN: '86', BR: '55', MX: '52',
-  };
-  return codes[region];
+  return callingCodeForRegion(Localization.getLocales()[0]?.regionCode);
 }
 
 /**

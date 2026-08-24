@@ -40,9 +40,34 @@ export default function AddPeopleScreen() {
   const [alreadyIn, setAlreadyIn] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const current = await app.contactsProvider.permission();
+    let current;
+    try {
+      current = await app.contactsProvider.permission();
+
+      // Ask the OS straight away the first time. Previously this screen showed
+      // an explanation and waited for a tap on "Allow contacts", so the system
+      // prompt never appeared unless it was found — and with a manual entry
+      // form right below it, the reasonable thing to do looked like typing
+      // people in by hand. Reported from a real phone as "it didn't ask for
+      // contacts permission".
+      //
+      // Only when the OS has genuinely not been asked yet: re-requesting after
+      // a denial does nothing on Android and is a no-op we should not hide
+      // behind.
+      if (current.state === 'undetermined' && current.canAskAgain) {
+        current = await app.contactsProvider.request();
+      }
+    } catch (error) {
+      // A throwing permission call used to leave this screen on its spinner
+      // forever, with nothing said.
+      setFailure(error instanceof Error ? error.message : String(error));
+      return;
+    }
+
+    setFailure(null);
     setPermission(current.state);
     setCanAskAgain(current.canAskAgain);
 
@@ -68,12 +93,26 @@ export default function AddPeopleScreen() {
     void load();
   }, [load]);
 
+  const usable = useMemo(
+    () => candidates.filter((c) => c.phones.some((p) => p.e164 !== null)),
+    [candidates]
+  );
+
+  /**
+   * Contacts that exist but whose numbers could not be read as a phone number.
+   *
+   * These were dropped silently, which is indistinguishable from "the app
+   * cannot see my contacts" — and it is a real possibility rather than an edge
+   * case, because a number stored in national format can only be normalised
+   * when the device region maps to a known calling code.
+   */
+  const hidden = candidates.length - usable.length;
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const usable = candidates.filter((c) => c.phones.some((p) => p.e164 !== null));
     if (!q) return usable;
     return usable.filter((c) => c.displayName.toLowerCase().includes(q));
-  }, [candidates, query]);
+  }, [usable, query]);
 
   async function request() {
     const result = await app.contactsProvider.request();
@@ -108,6 +147,27 @@ export default function AddPeopleScreen() {
     if (isErr(result)) return result.error.detail;
     setAlreadyIn((previous) => new Set([...previous, input.phoneE164]));
     return null;
+  }
+
+  if (failure !== null) {
+    return (
+      <Screen>
+        <Heading>Add people</Heading>
+        <Body>Stay Close could not reach your contacts on this device.</Body>
+        <Spacer />
+        <Body dim>{failure}</Body>
+        <Spacer />
+        <Button label="Try again" variant="primary" onPress={() => void load()} />
+        <Spacer />
+        <ManualPersonForm onAdd={addManually} busy={busy} />
+        <Spacer />
+        <Button
+          label="Done"
+          variant="quiet"
+          onPress={() => router.replace(`/groups/${params.id}`)}
+        />
+      </Screen>
+    );
   }
 
   if (permission === null) return <Loading label="Checking contacts access" />;
@@ -179,11 +239,21 @@ export default function AddPeopleScreen() {
         autoCorrect={false}
       />
 
+      {hidden > 0 ? (
+        <Body dim>
+          {hidden} {hidden === 1 ? 'contact is' : 'contacts are'} not shown because their number is
+          not stored in a format Stay Close can read. Adding the country code to the number in your
+          phone&apos;s contacts app fixes it, or add them by hand below.
+        </Body>
+      ) : null}
+
       {filtered.length === 0 ? (
         <Body dim>
           {candidates.length === 0
-            ? 'No contacts with a usable phone number were found.'
-            : 'No contacts match that search.'}
+            ? 'Your address book appears to be empty.'
+            : usable.length === 0
+              ? 'None of your contacts have a phone number Stay Close could read.'
+              : 'No contacts match that search.'}
         </Body>
       ) : (
         filtered.map((contact) => {
@@ -207,6 +277,14 @@ export default function AddPeopleScreen() {
           );
         })
       )}
+
+      <Spacer />
+      <Divider />
+      <Spacer />
+
+      {/* Also reachable with permission granted: under limited access, or when
+          a number could not be read, the address book alone is not enough. */}
+      <ManualPersonForm onAdd={addManually} busy={busy} />
 
       <Spacer />
       <Button label="Done" variant="primary" onPress={() => router.replace(`/groups/${params.id}`)} />
