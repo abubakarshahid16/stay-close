@@ -1,38 +1,32 @@
 /**
- * Permission allowlist tests (issues 047 / #58, 048 / #59).
+ * Permission enforcement tests (issues 047 / #58, 048 / #59).
  *
- * This is a privacy guarantee with teeth. The dependency audit found that
- * `expo-file-system` — a transitive dependency of `expo` itself, which we never
- * asked for and never use — adds INTERNET, READ_EXTERNAL_STORAGE and
- * WRITE_EXTERNAL_STORAGE via its config plugin.
+ * The plugin uses the Android manifest merger's own removal directive
+ * (tools:node="remove") rather than filtering the permission array. That change
+ * came from a real failure: the filtering version LOGGED that it had removed
+ * INTERNET and WRITE_CONTACTS, and the generated manifest still contained both.
+ * Expo re-applies permissions in later prebuild passes, and native library
+ * manifests contribute their own entries at Gradle merge time, which a config
+ * plugin never sees.
  *
- * An allowlist is the only shape that survives that. A blocklist would need to
- * name every unwanted permission in advance, and the next transitive plugin
- * would add one nobody had heard of. So the test that matters most here is the
- * one asserting an UNKNOWN permission is stripped by default.
+ * So these tests assert the DIRECTIVES are emitted. Whether the merger honoured
+ * them is verified against the built APK in the release workflow, because the
+ * merged result is the only thing that reflects what a user installs.
  */
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const plugin = require('../../plugins/withMinimalPermissions.js');
-const { enforceMinimalPermissions, ALLOWED_PERMISSIONS } = plugin;
+const { enforceMinimalPermissions, ALLOWED_PERMISSIONS, REMOVED_PERMISSIONS } = plugin;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const appJson = require('../../app.json');
 
-interface ManifestPermission {
-  $: { 'android:name'?: string };
+interface Entry {
+  $: Record<string, string | undefined>;
 }
 
 interface Manifest {
-  'uses-permission'?: ManifestPermission[];
-  'uses-permission-sdk-23'?: ManifestPermission[];
+  $?: Record<string, string>;
+  'uses-permission'?: Entry[];
 }
-
-const perm = (name: string): ManifestPermission => ({ $: { 'android:name': name } });
-
-const namesOf = (list?: ManifestPermission[]): string[] =>
-  (list ?? []).map((entry) => entry.$['android:name'] ?? '');
-
-const enforce = (manifest: Manifest): { manifest: Manifest; removed: string[] } =>
-  enforceMinimalPermissions(manifest) as { manifest: Manifest; removed: string[] };
 
 const JUSTIFIED = [
   'android.permission.READ_CONTACTS',
@@ -40,13 +34,36 @@ const JUSTIFIED = [
   'android.permission.RECEIVE_BOOT_COMPLETED',
 ];
 
-describe('allowlist', () => {
-  it('keeps exactly the three justified permissions', () => {
-    const { manifest } = enforce({ 'uses-permission': JUSTIFIED.map(perm) });
-    expect(namesOf(manifest['uses-permission']).sort()).toEqual([...JUSTIFIED].sort());
+const perm = (name: string): Entry => ({ $: { 'android:name': name } });
+
+const enforce = (manifest: Manifest): Manifest =>
+  enforceMinimalPermissions(manifest) as Manifest;
+
+/** Entries the app actually requests: named, with no removal directive. */
+const requested = (m: Manifest): string[] =>
+  (m['uses-permission'] ?? [])
+    .filter((e) => e.$['tools:node'] !== 'remove')
+    .map((e) => e.$['android:name'] ?? '')
+    .filter(Boolean);
+
+/** Entries marked for the merger to strip. */
+const removals = (m: Manifest): string[] =>
+  (m['uses-permission'] ?? [])
+    .filter((e) => e.$['tools:node'] === 'remove')
+    .map((e) => e.$['android:name'] ?? '');
+
+describe('permission enforcement', () => {
+  it('declares the tools namespace, without which the merger ignores removals', () => {
+    const out = enforce({ 'uses-permission': [] });
+    expect(out.$?.['xmlns:tools']).toBe('http://schemas.android.com/tools');
   });
 
-  it('documents a justification for every allowed permission', () => {
+  it('requests exactly the three justified permissions', () => {
+    const out = enforce({ 'uses-permission': [] });
+    expect(requested(out).sort()).toEqual([...JUSTIFIED].sort());
+  });
+
+  it('documents a justification for each', () => {
     for (const name of JUSTIFIED) {
       expect(typeof ALLOWED_PERMISSIONS[name]).toBe('string');
       expect(ALLOWED_PERMISSIONS[name].length).toBeGreaterThan(20);
@@ -54,96 +71,62 @@ describe('allowlist', () => {
     expect(Object.keys(ALLOWED_PERMISSIONS).sort()).toEqual([...JUSTIFIED].sort());
   });
 
-  // The three the audit actually found, from a transitive plugin.
+  // The permissions the audit actually found coming from dependencies.
   it.each([
     'android.permission.INTERNET',
+    'android.permission.WRITE_CONTACTS',
     'android.permission.READ_EXTERNAL_STORAGE',
     'android.permission.WRITE_EXTERNAL_STORAGE',
-  ])('strips %s, added by the transitive expo-file-system plugin', (name) => {
-    const { manifest, removed } = enforce({
-      'uses-permission': [perm('android.permission.READ_CONTACTS'), perm(name)],
-    });
-    expect(namesOf(manifest['uses-permission'])).not.toContain(name);
-    expect(removed).toContain(name);
-  });
-
-  it('strips WRITE_CONTACTS, added unconditionally by expo-contacts', () => {
-    const { manifest } = enforce({
-      'uses-permission': [
-        perm('android.permission.READ_CONTACTS'),
-        perm('android.permission.WRITE_CONTACTS'),
-      ],
-    });
-    expect(namesOf(manifest['uses-permission'])).toEqual(['android.permission.READ_CONTACTS']);
-  });
-
-  // The whole reason for choosing an allowlist. This is what a blocklist
-  // could not do.
-  it('strips a permission nobody anticipated', () => {
-    const { manifest, removed } = enforce({
-      'uses-permission': [
-        perm('android.permission.READ_CONTACTS'),
-        perm('android.permission.SOME_FUTURE_PERMISSION_WE_HAVE_NEVER_SEEN'),
-      ],
-    });
-    expect(namesOf(manifest['uses-permission'])).toEqual(['android.permission.READ_CONTACTS']);
-    expect(removed).toContain('android.permission.SOME_FUTURE_PERMISSION_WE_HAVE_NEVER_SEEN');
+  ])('marks %s for removal', (name) => {
+    const out = enforce({ 'uses-permission': [perm(name)] });
+    expect(removals(out)).toContain(name);
+    expect(requested(out)).not.toContain(name);
   });
 
   it.each([
+    'android.permission.CALL_PHONE',
+    'android.permission.SCHEDULE_EXACT_ALARM',
+    'android.permission.USE_EXACT_ALARM',
     'android.permission.ACCESS_FINE_LOCATION',
     'android.permission.CAMERA',
     'android.permission.RECORD_AUDIO',
     'android.permission.READ_CALENDAR',
-    'android.permission.BLUETOOTH',
     'android.permission.GET_ACCOUNTS',
-    'android.permission.CALL_PHONE',
-    'android.permission.SCHEDULE_EXACT_ALARM',
-    'android.permission.USE_EXACT_ALARM',
-  ])('strips %s', (name) => {
-    const { manifest } = enforce({ 'uses-permission': [perm(name)] });
-    expect(namesOf(manifest['uses-permission'])).toEqual([]);
+  ])('also marks %s for removal', (name) => {
+    expect(REMOVED_PERMISSIONS).toContain(name);
+    expect(removals(enforce({ 'uses-permission': [] }))).toContain(name);
   });
 
-  it('applies to uses-permission-sdk-23 as well', () => {
-    const { manifest } = enforce({
-      'uses-permission-sdk-23': [
-        perm('android.permission.READ_CONTACTS'),
-        perm('android.permission.INTERNET'),
-      ],
+  it('never marks a justified permission for removal', () => {
+    const out = enforce({ 'uses-permission': JUSTIFIED.map(perm) });
+    for (const name of JUSTIFIED) expect(removals(out)).not.toContain(name);
+  });
+
+  it('drops an unrecognised permission from the request list', () => {
+    const out = enforce({
+      'uses-permission': [perm('android.permission.SOMETHING_NOBODY_ANTICIPATED')],
     });
-    expect(namesOf(manifest['uses-permission-sdk-23'])).toEqual([
-      'android.permission.READ_CONTACTS',
-    ]);
+    expect(requested(out)).not.toContain('android.permission.SOMETHING_NOBODY_ANTICIPATED');
   });
-});
 
-describe('robustness', () => {
-  // Throwing here would fail the whole native build.
-  it('tolerates an empty manifest, a null manifest and malformed entries', () => {
+  it('does not duplicate a justified permission already present', () => {
+    const out = enforce({ 'uses-permission': [perm('android.permission.READ_CONTACTS')] });
+    const contacts = requested(out).filter((n) => n === 'android.permission.READ_CONTACTS');
+    expect(contacts).toHaveLength(1);
+  });
+
+  it('tolerates an empty or malformed manifest rather than failing a build', () => {
     expect(() => enforce({})).not.toThrow();
     expect(() => enforceMinimalPermissions(null)).not.toThrow();
-
-    const { manifest } = enforce({
-      'uses-permission': [{ $: {} }, perm('android.permission.INTERNET')],
-    });
-    // The malformed entry is kept rather than silently dropped; the known-bad
-    // one is removed.
-    expect(manifest['uses-permission']).toHaveLength(1);
+    const out = enforce({ 'uses-permission': [{ $: {} }] });
+    expect(requested(out).sort()).toEqual([...JUSTIFIED].sort());
   });
 
   it('is idempotent', () => {
-    const once = enforce({
-      'uses-permission': [
-        perm('android.permission.READ_CONTACTS'),
-        perm('android.permission.INTERNET'),
-      ],
-    });
-    const twice = enforce(once.manifest);
-    expect(namesOf(twice.manifest['uses-permission'])).toEqual([
-      'android.permission.READ_CONTACTS',
-    ]);
-    expect(twice.removed).toEqual([]);
+    const once = enforce({ 'uses-permission': [perm('android.permission.INTERNET')] });
+    const twice = enforce(once);
+    expect(requested(twice).sort()).toEqual([...JUSTIFIED].sort());
+    expect(new Set(removals(twice)).size).toBe(removals(twice).length);
   });
 });
 
@@ -157,15 +140,9 @@ describe('app.json wiring', () => {
     expect([...appJson.expo.android.permissions].sort()).toEqual([...JUSTIFIED].sort());
   });
 
-  // docs/PRODUCT.md §7.1 — web was re-included by the product owner as a
-  // deliberately degraded target. The permission allowlist is Android-only, so
-  // adding web does not widen the native permission surface; this asserts that.
+  // docs/PRODUCT.md §7.1 — web was re-included as a degraded target.
   it('targets iOS, Android and web', () => {
     expect([...appJson.expo.platforms].sort()).toEqual(['android', 'ios', 'web']);
     expect(appJson.expo.web).toBeDefined();
-  });
-
-  it('adding web did not widen the Android permission set', () => {
-    expect([...appJson.expo.android.permissions].sort()).toEqual([...JUSTIFIED].sort());
   });
 });

@@ -127,8 +127,15 @@ describe('the app makes no network requests', () => {
 });
 
 describe('outbound URLs', () => {
-  it('references no remote host except the WhatsApp deep link', () => {
-    const allowed = ['https://wa.me/'];
+  it('references no remote host except deep links and XML namespaces', () => {
+    const allowed = [
+      // A deep link handed to the OS, not a request we make (docs/DOMAIN.md §12).
+      'https://wa.me/',
+      // An XML namespace IDENTIFIER, used by the Android manifest merger. URIs
+      // in that position are names, never fetched — the merger resolves them
+      // locally and no HTTP request is ever made.
+      'http://schemas.android.com/',
+    ];
     const offenders: string[] = [];
 
     for (const file of sourceFiles()) {

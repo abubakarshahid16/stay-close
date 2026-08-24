@@ -1,31 +1,28 @@
 /**
- * Config plugin: enforce the minimum-permission rule as an ALLOWLIST.
+ * Config plugin: enforce the minimum-permission rule.
  *
- * Supersedes the earlier withReadOnlyContacts, which stripped a blocklist of
- * one permission. A blocklist is the wrong shape here, and the dependency audit
- * (issue 047) showed why: `expo-file-system` is a *transitive* dependency of
- * `expo` itself, and its config plugin adds
+ * Uses the Android manifest merger's own removal directive
+ * (`tools:node="remove"`) rather than filtering the permission array.
  *
- *     android.permission.INTERNET
- *     android.permission.READ_EXTERNAL_STORAGE
- *     android.permission.WRITE_EXTERNAL_STORAGE
+ * WHY, because the array-filtering version looked like it worked and did not:
+ * it logged "removed: INTERNET, WRITE_CONTACTS, ..." and the generated manifest
+ * still contained all of them. Two reasons.
  *
- * We never asked for that package and we never use it. With a blocklist we
- * would have had to know in advance to name those three — and the next
- * transitive plugin would add something we had never heard of, silently.
+ *   1. Expo's prebuild pipeline runs several passes, and permissions declared by
+ *      app.json and by autolinked packages are re-applied after a custom mod
+ *      has run. Filtering the array is undone.
+ *   2. More fundamentally, native library manifests contribute their own
+ *      <uses-permission> entries at Gradle merge time. A config plugin never
+ *      sees those at all, so no amount of filtering could remove them.
  *
- * So this strips everything NOT explicitly justified. A new permission from
- * anywhere in the tree is removed by default and has to be argued for by adding
- * it here, which is exactly the review step docs/PRODUCT.md §5 asks for.
+ * `tools:node="remove"` is evaluated by the merger itself, so it removes a
+ * permission whatever declared it — app.json, an Expo plugin, or a library
+ * manifest buried in a transitive dependency.
  *
- * INTERNET is the one worth calling out. Stay Close makes no network requests at
- * all (verified by the audit and guarded by a test), so an app that cannot reach
- * the network is a meaningful privacy property rather than a technicality.
- *
- * NOTE: a release build must be checked to confirm this actually applied —
- * see docs/DEVICE_VERIFICATION.md §1.
+ * Verified against the built APK rather than the source manifest, because the
+ * merged result is the only thing that reflects what a user actually installs.
  */
-const { withAndroidManifest } = require('expo/config-plugins');
+const { withAndroidManifest, AndroidConfig } = require('expo/config-plugins');
 
 /**
  * Every Android permission this product justifies, with the reason.
@@ -40,51 +37,89 @@ const ALLOWED = {
     'Re-register scheduled local notifications after a reboot.',
 };
 
-const PERMISSION_KEYS = ['uses-permission', 'uses-permission-sdk-23'];
+/**
+ * Permissions known to be contributed by our dependency tree that this product
+ * does not justify. Each is removed via the manifest merger.
+ *
+ * INTERNET is the one that matters most: the app makes no network requests
+ * (docs/SECURITY.md §2), so an app that *cannot* reach the network is a real
+ * privacy property rather than a technicality.
+ */
+const REMOVE = [
+  'android.permission.INTERNET',
+  'android.permission.ACCESS_NETWORK_STATE',
+  'android.permission.WRITE_CONTACTS',
+  'android.permission.READ_EXTERNAL_STORAGE',
+  'android.permission.WRITE_EXTERNAL_STORAGE',
+  'android.permission.SYSTEM_ALERT_WINDOW',
+  'android.permission.VIBRATE',
+  'android.permission.WAKE_LOCK',
+  'android.permission.CAMERA',
+  'android.permission.RECORD_AUDIO',
+  'android.permission.ACCESS_FINE_LOCATION',
+  'android.permission.ACCESS_COARSE_LOCATION',
+  'android.permission.READ_CALENDAR',
+  'android.permission.WRITE_CALENDAR',
+  'android.permission.GET_ACCOUNTS',
+  'android.permission.CALL_PHONE',
+  'android.permission.SCHEDULE_EXACT_ALARM',
+  'android.permission.USE_EXACT_ALARM',
+];
+
+const TOOLS_NS = 'http://schemas.android.com/tools';
 
 /**
- * Remove every permission not in ALLOWED, in place.
+ * Rewrite a manifest so forbidden permissions are marked for removal and
+ * allowed ones are declared once.
  *
- * Tolerant of malformed entries: throwing here would fail the whole native
- * build for a cosmetic reason.
- *
- * @param {Record<string, unknown>} manifest
- * @returns {{ manifest: Record<string, unknown>, removed: string[] }}
+ * @param {Record<string, any>} manifest
+ * @returns {Record<string, any>} the same manifest, mutated
  */
 function enforceMinimalPermissions(manifest) {
-  const removed = [];
-  if (!manifest || typeof manifest !== 'object') return { manifest, removed };
+  if (!manifest || typeof manifest !== 'object') return manifest;
 
-  for (const key of PERMISSION_KEYS) {
-    const entries = manifest[key];
-    if (!Array.isArray(entries)) continue;
+  // The removal directive is namespaced; without this the merger ignores it.
+  manifest.$ = manifest.$ ?? {};
+  manifest.$['xmlns:tools'] = TOOLS_NS;
 
-    manifest[key] = entries.filter((entry) => {
-      const name = entry && entry.$ ? entry.$['android:name'] : undefined;
-      // Keep anything unnamed rather than silently dropping a malformed entry
-      // we do not understand.
-      if (typeof name !== 'string') return true;
-      if (Object.prototype.hasOwnProperty.call(ALLOWED, name)) return true;
-      removed.push(name);
-      return false;
-    });
+  const existing = Array.isArray(manifest['uses-permission'])
+    ? manifest['uses-permission']
+    : [];
+
+  const nameOf = (entry) => (entry && entry.$ ? entry.$['android:name'] : undefined);
+
+  // Keep only justified permissions, and anything we do not recognise at all
+  // (an unnamed or malformed entry is left alone rather than silently dropped).
+  const kept = existing.filter((entry) => {
+    const name = nameOf(entry);
+    if (typeof name !== 'string') return true;
+    return Object.prototype.hasOwnProperty.call(ALLOWED, name);
+  });
+
+  // Ensure each allowed permission is present exactly once.
+  for (const name of Object.keys(ALLOWED)) {
+    if (!kept.some((entry) => nameOf(entry) === name)) {
+      kept.push({ $: { 'android:name': name } });
+    }
   }
 
-  return { manifest, removed };
+  // Then instruct the merger to strip the rest, whoever declared them.
+  for (const name of REMOVE) {
+    kept.push({ $: { 'android:name': name, 'tools:node': 'remove' } });
+  }
+
+  manifest['uses-permission'] = kept;
+  return manifest;
 }
 
 module.exports = function withMinimalPermissions(config) {
   return withAndroidManifest(config, (cfg) => {
-    const { removed } = enforceMinimalPermissions(cfg.modResults.manifest);
-    if (removed.length > 0) {
-      // Visible in the prebuild log, so an unexpected addition is noticed
-      // rather than silently stripped.
-      // eslint-disable-next-line no-console
-      console.log(`[withMinimalPermissions] removed: ${removed.join(', ')}`);
-    }
+    enforceMinimalPermissions(cfg.modResults.manifest);
     return cfg;
   });
 };
 
 module.exports.enforceMinimalPermissions = enforceMinimalPermissions;
 module.exports.ALLOWED_PERMISSIONS = ALLOWED;
+module.exports.REMOVED_PERMISSIONS = REMOVE;
+module.exports.AndroidConfigAvailable = Boolean(AndroidConfig);

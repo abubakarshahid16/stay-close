@@ -57,38 +57,47 @@ jobs:
       - name: Generate native projects
         run: npx expo prebuild --platform android --clean
 
-      # The permission audit's release blocker (docs/SECURITY.md §3.5). The unit
-      # tests cover the plugin's transform; only a real prebuild proves it
-      # applied. A failure here must stop the build, not warn.
-      - name: Verify permission allowlist applied
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      # The permission audit's release blocker (docs/SECURITY.md §3.5), checked
+      # against the BUILT APK rather than the source manifest.
+      #
+      # The source manifest is not evidence: forbidden permissions legitimately
+      # appear there carrying tools:node="remove" directives, and native library
+      # manifests contribute their own entries only at Gradle merge time. The
+      # APK is the only artefact that reflects what a user actually installs.
+      - name: Verify permissions in the built APK
         run: |
-          MANIFEST=android/app/src/main/AndroidManifest.xml
-          echo "--- declared permissions ---"
-          grep -o 'android.permission.[A-Z_]*' "$MANIFEST" | sort -u || true
-          echo "----------------------------"
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK" || { echo "::error::APK not found at $APK"; exit 1; }
+
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
+          test -n "$AAPT" || { echo "::error::aapt not found in the Android SDK"; exit 1; }
+          echo "Using $AAPT"
+
+          "$AAPT" dump permissions "$APK" > perms.txt
+          echo "--- permissions in the APK ---"
+          grep -oE 'android\.permission\.[A-Z_]+' perms.txt | sort -u || true
+          echo "------------------------------"
 
           FAILED=0
-          for FORBIDDEN in INTERNET WRITE_CONTACTS READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE \
-                           CALL_PHONE SCHEDULE_EXACT_ALARM USE_EXACT_ALARM ACCESS_FINE_LOCATION \
-                           CAMERA RECORD_AUDIO; do
-            if grep -q "android.permission.$FORBIDDEN" "$MANIFEST"; then
-              echo "::error::$FORBIDDEN is present in the manifest. See docs/SECURITY.md §3."
+          for FORBIDDEN in INTERNET WRITE_CONTACTS READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE                            CALL_PHONE SCHEDULE_EXACT_ALARM USE_EXACT_ALARM ACCESS_FINE_LOCATION                            ACCESS_COARSE_LOCATION CAMERA RECORD_AUDIO READ_CALENDAR GET_ACCOUNTS; do
+            if grep -q "android.permission.$FORBIDDEN" perms.txt; then
+              echo "::error::$FORBIDDEN is present in the built APK. See docs/SECURITY.md §3."
               FAILED=1
             fi
           done
 
           for REQUIRED in READ_CONTACTS POST_NOTIFICATIONS RECEIVE_BOOT_COMPLETED; do
-            if ! grep -q "android.permission.$REQUIRED" "$MANIFEST"; then
-              echo "::error::$REQUIRED is missing from the manifest."
+            if ! grep -q "android.permission.$REQUIRED" perms.txt; then
+              echo "::error::$REQUIRED is missing from the built APK."
               FAILED=1
             fi
           done
 
           exit $FAILED
-
-      - name: Build APK
-        working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
 
       - name: Name the artefact
         id: name
