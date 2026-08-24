@@ -3,20 +3,20 @@ name: Build Android APK
 # Produces a directly-installable APK and attaches it to a GitHub Release, so
 # the README install button has something to point at.
 #
-# Two triggers:
+# Triggers:
 #   - pushing a v*.*.* tag  -> publishes a Release
 #   - manual dispatch       -> uploads a build artefact only, no Release
 #
-# The APK is DEBUG-SIGNED on purpose. A release build needs a keystore, and a
-# keystore generated per-run would change the signing identity every build,
-# breaking in-place upgrades for anyone who had already installed it. A
-# debug-signed APK sideloads fine, which is what "install directly from the
-# repo" needs. It is not suitable for Play Store submission — that requires a
-# stable keystore held in repository secrets.
+# The APK is DEBUG-SIGNED on purpose. A release build needs a keystore, and one
+# generated per run would change the signing identity every build, breaking
+# in-place upgrades for anyone who had already installed it. A debug-signed APK
+# sideloads fine, which is what "install directly from the repo" needs. It is not
+# suitable for Play Store submission.
 
 on:
   push:
-    tags: ['v*.*.*']
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
 
 permissions:
@@ -59,40 +59,48 @@ jobs:
 
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      # The permission audit's release blocker (docs/SECURITY.md §3.5), checked
-      # against the BUILT APK rather than the source manifest.
+      # The permission audit's release blocker (docs/SECURITY.md section 3.5),
+      # checked against the BUILT APK rather than the source manifest.
       #
       # The source manifest is not evidence: forbidden permissions legitimately
       # appear there carrying tools:node="remove" directives, and native library
-      # manifests contribute their own entries only at Gradle merge time. The
-      # APK is the only artefact that reflects what a user actually installs.
+      # manifests contribute their own entries only at Gradle merge time. The APK
+      # is the only artefact reflecting what a user actually installs.
       - name: Verify permissions in the built APK
         run: |
           APK=android/app/build/outputs/apk/debug/app-debug.apk
-          test -f "$APK" || { echo "::error::APK not found at $APK"; exit 1; }
+          if [ ! -f "$APK" ]; then
+            echo "::error::APK not found at $APK"
+            exit 1
+          fi
 
           AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
-          test -n "$AAPT" || { echo "::error::aapt not found in the Android SDK"; exit 1; }
+          if [ -z "$AAPT" ]; then
+            echo "::error::aapt not found in the Android SDK"
+            exit 1
+          fi
           echo "Using $AAPT"
 
           "$AAPT" dump permissions "$APK" > perms.txt
           echo "--- permissions in the APK ---"
-          grep -oE 'android\.permission\.[A-Z_]+' perms.txt | sort -u || true
+          grep -oE 'android[.]permission[.][A-Z_]+' perms.txt | sort -u || true
           echo "------------------------------"
 
           FAILED=0
-          for FORBIDDEN in INTERNET WRITE_CONTACTS READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE                            CALL_PHONE SCHEDULE_EXACT_ALARM USE_EXACT_ALARM ACCESS_FINE_LOCATION                            ACCESS_COARSE_LOCATION CAMERA RECORD_AUDIO READ_CALENDAR GET_ACCOUNTS; do
-            if grep -q "android.permission.$FORBIDDEN" perms.txt; then
-              echo "::error::$FORBIDDEN is present in the built APK. See docs/SECURITY.md §3."
+          FORBIDDEN_LIST="INTERNET WRITE_CONTACTS READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE CALL_PHONE SCHEDULE_EXACT_ALARM USE_EXACT_ALARM ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION CAMERA RECORD_AUDIO READ_CALENDAR GET_ACCOUNTS"
+          for NAME in $FORBIDDEN_LIST; do
+            if grep -qE "android[.]permission[.]${NAME}([^A-Z_]|$)" perms.txt; then
+              echo "::error::${NAME} is present in the built APK. See docs/SECURITY.md section 3."
               FAILED=1
             fi
           done
 
-          for REQUIRED in READ_CONTACTS POST_NOTIFICATIONS RECEIVE_BOOT_COMPLETED; do
-            if ! grep -q "android.permission.$REQUIRED" perms.txt; then
-              echo "::error::$REQUIRED is missing from the built APK."
+          REQUIRED_LIST="READ_CONTACTS POST_NOTIFICATIONS RECEIVE_BOOT_COMPLETED"
+          for NAME in $REQUIRED_LIST; do
+            if ! grep -qE "android[.]permission[.]${NAME}([^A-Z_]|$)" perms.txt; then
+              echo "::error::${NAME} is missing from the built APK."
               FAILED=1
             fi
           done
@@ -106,7 +114,7 @@ jobs:
           if [ "${{ github.ref_type }}" = "tag" ]; then
             NAME="stay-close-${{ github.ref_name }}.apk"
           else
-            NAME="stay-close-v${VERSION}-${GITHUB_SHA::7}.apk"
+            NAME="stay-close-v${VERSION}-${GITHUB_SHA:0:7}.apk"
           fi
           cp android/app/build/outputs/apk/debug/app-debug.apk "$NAME"
           echo "apk=$NAME" >> "$GITHUB_OUTPUT"
@@ -135,19 +143,19 @@ jobs:
             2. Open it. Android will ask you to allow installing from your browser — allow it once.
             3. Open Stay Close.
 
-            **Android only.** iOS cannot sideload; an iPhone build needs TestFlight or the App Store.
+            **Android only.** iPhones cannot sideload; an iOS build needs TestFlight or the App Store.
+
+            ### On first launch
+
+            Grant **Contacts** so you can choose who to stay in touch with, and **Notifications** so
+            reminders can reach you. Everything stays on your phone — no account, no server, and the
+            app has no internet permission at all.
 
             ### Please read
 
             This is a **debug-signed** build for direct install, not a store release.
 
-            On first launch, grant **Contacts** so you can choose who to stay in touch with, and
-            **Notifications** so reminders can reach you. Everything stays on your phone — there
-            is no account, no server, and the app has no internet permission at all.
-
-            ### Not yet verified on real hardware
-
-            Notification delivery with the app closed, reboot recovery, and offline operation are
-            specified in `docs/DEVICE_VERIFICATION.md` but have **not** been tested on a device.
-            If reminders do not arrive when the app is closed, that is a known unverified area —
-            please open an issue with your phone model and Android version.
+            **Not yet verified on real hardware.** Notification delivery with the app closed, reboot
+            recovery and offline operation are specified in `docs/DEVICE_VERIFICATION.md` but have not
+            been tested on a device. If reminders do not arrive when the app is closed, that is a
+            known unverified area — please open an issue with your phone model and Android version.
