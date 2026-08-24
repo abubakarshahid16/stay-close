@@ -14,15 +14,15 @@ import { FakeNotificationScheduler } from '../../src/testing/FakeNotificationSch
 import { migrate } from '../../src/adapters/persistence/Database';
 import { SqlUnitOfWork } from '../../src/adapters/persistence/SqlRepositories';
 import { SeededRandom } from '../../src/adapters/system/SeededRandom';
-import { GroupUseCases } from '../../src/app/groups/GroupUseCases';
-import { ScheduleUseCases } from '../../src/app/schedules/ScheduleUseCases';
-import { RunScheduler } from '../../src/app/scheduler/RunScheduler';
-import { ReminderUseCases } from '../../src/app/reminders/ReminderUseCases';
+import { GroupUseCases } from '../../src/usecases/groups/GroupUseCases';
+import { ScheduleUseCases } from '../../src/usecases/schedules/ScheduleUseCases';
+import { RunScheduler } from '../../src/usecases/scheduler/RunScheduler';
+import { ReminderUseCases } from '../../src/usecases/reminders/ReminderUseCases';
 import {
   ReconcileNotifications,
   NOTIFICATION_BUDGET,
   defaultCopy,
-} from '../../src/app/notifications/ReconcileNotifications';
+} from '../../src/usecases/notifications/ReconcileNotifications';
 import { unwrap } from '../../src/domain/shared/Result';
 import { instant, reminderId } from '../../src/domain/shared/ids';
 

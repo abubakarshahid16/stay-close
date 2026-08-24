@@ -18,14 +18,14 @@ import { FakeNotificationScheduler } from '../../src/testing/FakeNotificationSch
 import { migrate } from '../../src/adapters/persistence/Database';
 import { SqlUnitOfWork } from '../../src/adapters/persistence/SqlRepositories';
 import { SeededRandom } from '../../src/adapters/system/SeededRandom';
-import { GroupUseCases } from '../../src/app/groups/GroupUseCases';
-import { ScheduleUseCases } from '../../src/app/schedules/ScheduleUseCases';
-import { RunScheduler } from '../../src/app/scheduler/RunScheduler';
-import { ReconcileNotifications } from '../../src/app/notifications/ReconcileNotifications';
+import { GroupUseCases } from '../../src/usecases/groups/GroupUseCases';
+import { ScheduleUseCases } from '../../src/usecases/schedules/ScheduleUseCases';
+import { RunScheduler } from '../../src/usecases/scheduler/RunScheduler';
+import { ReconcileNotifications } from '../../src/usecases/notifications/ReconcileNotifications';
 import {
   StartupReconciliation,
   type ContactSyncStep,
-} from '../../src/app/startup/StartupReconciliation';
+} from '../../src/usecases/startup/StartupReconciliation';
 import {
   prepareDatabase,
   recoveryOptionsFor,

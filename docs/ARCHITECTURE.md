@@ -23,7 +23,7 @@ Everything else in this document follows from that.
 ┌──────────────────────────────────────────────┐
 │ Presentation      app/  — Expo Router screens│  basic controls only (Phase A)
 ├──────────────────────────────────────────────┤
-│ Application       src/app/  — use cases      │  orchestrates; owns transactions
+│ Application       src/usecases/  — use cases      │  orchestrates; owns transactions
 ├──────────────────────────────────────────────┤
 │ Domain            src/domain/  — pure logic  │  no I/O, no imports of anything below
 ├──────────────────────────────────────────────┤
@@ -35,6 +35,30 @@ Everything else in this document follows from that.
 
 **Dependencies point inward and never outward.** The domain declares the interfaces it needs
 (ports); adapters implement them. Composition happens once, at the app entry point.
+
+### 2.0 Why the application layer is `src/usecases/`, not `src/app/`
+
+It was `src/app/` originally. **That silently broke every build.**
+
+Expo Router treats `src/app` as its routes directory in preference to `app/` when it exists. With
+the application layer living there, Router used it as the route tree — found use-case classes
+instead of React components, produced no real routes, and emitted a shell-only bundle. No error,
+no warning: `expo export` succeeded and the app rendered nothing. The only clue was one line in
+the export log:
+
+```
+Using src/app as the root directory for Expo Router.
+```
+
+The screens in `app/` had never been reachable, on any platform.
+
+It could have been papered over with the `EXPO_ROUTER_APP_ROOT` environment variable, but that
+would need setting for every dev run, export and CI job, and forgetting it fails silently in
+exactly the same way. Renaming removes the trap instead of hiding it.
+
+**Do not create a `src/app/` directory in this project.**
+
+---
 
 ### 2.1 Hard rules
 
@@ -254,7 +278,7 @@ Application-level checking alone is not trusted (`DOMAIN.md` §14.1).
 | Layer | Test kind | Dependencies | Runs where |
 |---|---|---|---|
 | `src/domain/**` | unit | none — fakes for Clock/Random | Node, no native build |
-| `src/app/**` | use-case | in-memory repository fakes | Node, no native build |
+| `src/usecases/**` | use-case | in-memory repository fakes | Node, no native build |
 | `src/adapters/persistence/**` | integration | real SQLite | Node via adapter, or device |
 | `__tests__/simulation/**` | simulation | seeded Random, fake Clock | Node, no native build |
 | Presentation | smoke | mocked use cases | Node |

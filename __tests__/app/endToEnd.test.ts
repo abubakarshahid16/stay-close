@@ -22,14 +22,14 @@ import { FakeNotificationScheduler } from '../../src/testing/FakeNotificationSch
 import { prepareDatabase } from '../../src/adapters/persistence/prepareDatabase';
 import { SqlUnitOfWork } from '../../src/adapters/persistence/SqlRepositories';
 import { SeededRandom } from '../../src/adapters/system/SeededRandom';
-import { GroupUseCases } from '../../src/app/groups/GroupUseCases';
-import { ScheduleUseCases } from '../../src/app/schedules/ScheduleUseCases';
-import { RunScheduler } from '../../src/app/scheduler/RunScheduler';
-import { ReminderUseCases } from '../../src/app/reminders/ReminderUseCases';
-import { ReconcileNotifications } from '../../src/app/notifications/ReconcileNotifications';
-import { SyncContactReferences } from '../../src/app/contacts/SyncContactReferences';
-import { StartupReconciliation } from '../../src/app/startup/StartupReconciliation';
-import { HistoryQueries } from '../../src/app/history/HistoryQueries';
+import { GroupUseCases } from '../../src/usecases/groups/GroupUseCases';
+import { ScheduleUseCases } from '../../src/usecases/schedules/ScheduleUseCases';
+import { RunScheduler } from '../../src/usecases/scheduler/RunScheduler';
+import { ReminderUseCases } from '../../src/usecases/reminders/ReminderUseCases';
+import { ReconcileNotifications } from '../../src/usecases/notifications/ReconcileNotifications';
+import { SyncContactReferences } from '../../src/usecases/contacts/SyncContactReferences';
+import { StartupReconciliation } from '../../src/usecases/startup/StartupReconciliation';
+import { HistoryQueries } from '../../src/usecases/history/HistoryQueries';
 import { LinkingCommunicationLauncher } from '../../src/adapters/communication/LinkingCommunicationLauncher';
 import { unwrap } from '../../src/domain/shared/Result';
 

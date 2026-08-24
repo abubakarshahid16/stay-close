@@ -8,14 +8,13 @@
  *
  * Injects, into dist/index.html:
  *   - the web manifest link (needed for installability)
+ *   - iOS home-screen meta tags
  *   - a service-worker registration
- *   - a one-time reload after the worker takes control
  *
- * That last one matters. expo-sqlite's WASM needs the cross-origin isolation
- * headers the worker adds, and the first page load happens *before* the worker
- * controls the page — so without a single reload, the database fails to open on
- * a first visit. The previous version of this app shipped a string of fixes for
- * exactly that symptom.
+ * Nothing more. An earlier version also forced a one-time reload so the page
+ * would be controlled by the worker, for cross-origin isolation headers the
+ * worker used to add. Those headers blocked the app's own JS bundle, so both
+ * they and the reload are gone.
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -80,21 +79,14 @@ const injection = `
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Stay Close" />
     <script>
-      // Register the worker, then reload ONCE so the page is controlled by it.
-      // expo-sqlite's WASM needs the isolation headers the worker adds, and the
-      // first load happens before the worker takes control.
+      // Register the worker purely so the browser offers "Install app".
+      // Deliberately no reload: an earlier version forced one so the page would
+      // be controlled by the worker (for cross-origin isolation headers that
+      // turned out to break asset loading). Registration alone is enough for
+      // installability, and a failure here must not affect the app.
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('${BASE}/sw.js').then(function () {
-            if (!navigator.serviceWorker.controller && !sessionStorage.getItem('sc-reloaded')) {
-              sessionStorage.setItem('sc-reloaded', '1');
-              window.location.reload();
-            }
-          }).catch(function () {
-            // No worker means no cross-origin isolation, so the database may not
-            // open. Surfaced by the app's own boot-failure screen rather than
-            // swallowed here.
-          });
+          navigator.serviceWorker.register('${BASE}/sw.js').catch(function () {});
         });
       }
     </script>

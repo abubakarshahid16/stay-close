@@ -174,7 +174,7 @@ Four layers, dependencies pointing strictly inward:
 
 ```text
 app/            Expo Router screens          (Phase A: basic controls only)
-src/app/        use cases                    (orchestration, transactions)
+src/usecases/        use cases                    (orchestration, transactions)
 src/domain/     pure logic                   (no I/O, no platform, no clock)
 src/ports/      interfaces                   (declared by the inside)
 src/adapters/   expo-sqlite, expo-contacts, expo-notifications, Linking

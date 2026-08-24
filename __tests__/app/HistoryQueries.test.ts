@@ -11,11 +11,11 @@ import { FakeClock } from '../../src/testing/FakeClock';
 import { migrate } from '../../src/adapters/persistence/Database';
 import { SqlUnitOfWork } from '../../src/adapters/persistence/SqlRepositories';
 import { SeededRandom } from '../../src/adapters/system/SeededRandom';
-import { GroupUseCases } from '../../src/app/groups/GroupUseCases';
-import { ScheduleUseCases } from '../../src/app/schedules/ScheduleUseCases';
-import { RunScheduler } from '../../src/app/scheduler/RunScheduler';
-import { ReminderUseCases } from '../../src/app/reminders/ReminderUseCases';
-import { HistoryQueries } from '../../src/app/history/HistoryQueries';
+import { GroupUseCases } from '../../src/usecases/groups/GroupUseCases';
+import { ScheduleUseCases } from '../../src/usecases/schedules/ScheduleUseCases';
+import { RunScheduler } from '../../src/usecases/scheduler/RunScheduler';
+import { ReminderUseCases } from '../../src/usecases/reminders/ReminderUseCases';
+import { HistoryQueries } from '../../src/usecases/history/HistoryQueries';
 import { unwrap } from '../../src/domain/shared/Result';
 
 const START = '2026-08-16T00:00:00.000Z';

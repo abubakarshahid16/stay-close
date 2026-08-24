@@ -21,7 +21,7 @@ import { WebNotificationScheduler } from '../adapters/notifications/WebNotificat
 import { LinkingCommunicationLauncher } from '../adapters/communication/LinkingCommunicationLauncher';
 import { SystemClock } from '../adapters/system/SystemClock';
 import { CryptoRandom } from '../adapters/system/CryptoRandom';
-import type { StartupOutcome } from '../app/startup/StartupReconciliation';
+import type { StartupOutcome } from '../usecases/startup/StartupReconciliation';
 
 /**
  * Only the non-ready variants can accompany a failure. Narrowing the type here

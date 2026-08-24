@@ -60,7 +60,7 @@ module.exports = {
               { group: ['expo', 'expo-*', 'expo/*'], message: 'Domain must not depend on Expo. Use a port in src/ports.' },
               { group: ['react', 'react-*', 'react-native', 'react-native-*'], message: 'Domain must not depend on React or React Native.' },
               { group: ['**/adapters/**'], message: 'Domain must not import adapters. Depend on a port instead.' },
-              { group: ['**/app/**'], message: 'Domain must not import the application layer. Dependencies point inward.' },
+              { group: ['**/usecases/**'], message: 'Domain must not import the application layer. Dependencies point inward.' },
             ],
           },
         ],
@@ -69,7 +69,7 @@ module.exports = {
     {
       // The application layer orchestrates use cases. It may use ports and the
       // domain, but must not bind to a concrete platform adapter.
-      files: ['src/app/**/*.ts'],
+      files: ['src/usecases/**/*.ts'],
       rules: {
         'no-restricted-imports': [
           'error',
@@ -86,7 +86,7 @@ module.exports = {
       // Time and randomness are injected everywhere except the adapters that
       // provide them (docs/ARCHITECTURE.md §4.1, §4.2). A stray Date.now() in
       // the scheduler makes its tests untrustworthy.
-      files: ['src/domain/**/*.ts', 'src/app/**/*.ts', 'app/**/*.tsx', 'app/**/*.ts'],
+      files: ['src/domain/**/*.ts', 'src/usecases/**/*.ts', 'app/**/*.tsx', 'app/**/*.ts'],
       rules: {
         'no-restricted-properties': [
           'error',

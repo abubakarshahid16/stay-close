@@ -10,7 +10,7 @@ import { FakeClock } from '../../src/testing/FakeClock';
 import { FakeContactProvider } from '../../src/testing/FakeContactProvider';
 import { migrate } from '../../src/adapters/persistence/Database';
 import { SqlUnitOfWork } from '../../src/adapters/persistence/SqlRepositories';
-import { SyncContactReferences } from '../../src/app/contacts/SyncContactReferences';
+import { SyncContactReferences } from '../../src/usecases/contacts/SyncContactReferences';
 import { nativeContactId } from '../../src/domain/shared/ids';
 
 const START = '2026-08-16T21:00:00.000Z';

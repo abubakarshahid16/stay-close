@@ -26,7 +26,7 @@ import {
   Spacer,
   Subheading,
 } from '../src/ui/basics';
-import type { ReminderView } from '../src/app/reminders/ReminderUseCases';
+import type { ReminderView } from '../src/usecases/reminders/ReminderUseCases';
 import { isErr } from '../src/domain/shared/Result';
 import type { ReminderId } from '../src/domain/shared/ids';
 

@@ -11,10 +11,10 @@ import { FakeClock } from '../../src/testing/FakeClock';
 import { migrate } from '../../src/adapters/persistence/Database';
 import { SqlUnitOfWork } from '../../src/adapters/persistence/SqlRepositories';
 import { SeededRandom } from '../../src/adapters/system/SeededRandom';
-import { GroupUseCases } from '../../src/app/groups/GroupUseCases';
-import { ScheduleUseCases } from '../../src/app/schedules/ScheduleUseCases';
-import { RunScheduler } from '../../src/app/scheduler/RunScheduler';
-import { ReminderUseCases, SKIP_PENALTY_MS } from '../../src/app/reminders/ReminderUseCases';
+import { GroupUseCases } from '../../src/usecases/groups/GroupUseCases';
+import { ScheduleUseCases } from '../../src/usecases/schedules/ScheduleUseCases';
+import { RunScheduler } from '../../src/usecases/scheduler/RunScheduler';
+import { ReminderUseCases, SKIP_PENALTY_MS } from '../../src/usecases/reminders/ReminderUseCases';
 import { isErr, unwrap } from '../../src/domain/shared/Result';
 import { reminderId } from '../../src/domain/shared/ids';
 

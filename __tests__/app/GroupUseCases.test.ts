@@ -12,7 +12,7 @@ import { NodeSqlDriver } from '../../src/testing/NodeSqlDriver';
 import { FakeClock } from '../../src/testing/FakeClock';
 import { migrate } from '../../src/adapters/persistence/Database';
 import { SqlUnitOfWork } from '../../src/adapters/persistence/SqlRepositories';
-import { GroupUseCases } from '../../src/app/groups/GroupUseCases';
+import { GroupUseCases } from '../../src/usecases/groups/GroupUseCases';
 import { isErr, isOk, unwrap } from '../../src/domain/shared/Result';
 import { groupId, contactReferenceId } from '../../src/domain/shared/ids';
 

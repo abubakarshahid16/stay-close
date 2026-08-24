@@ -15,14 +15,14 @@ import type { SqlDriver } from './ports/SqlDriver';
 import type { UnitOfWork } from './ports/repositories';
 
 import { SqlUnitOfWork } from './adapters/persistence/SqlRepositories';
-import { GroupUseCases } from './app/groups/GroupUseCases';
-import { ScheduleUseCases } from './app/schedules/ScheduleUseCases';
-import { RunScheduler } from './app/scheduler/RunScheduler';
-import { ReminderUseCases } from './app/reminders/ReminderUseCases';
-import { ReconcileNotifications } from './app/notifications/ReconcileNotifications';
-import { SyncContactReferences } from './app/contacts/SyncContactReferences';
-import { StartupReconciliation } from './app/startup/StartupReconciliation';
-import { HistoryQueries } from './app/history/HistoryQueries';
+import { GroupUseCases } from './usecases/groups/GroupUseCases';
+import { ScheduleUseCases } from './usecases/schedules/ScheduleUseCases';
+import { RunScheduler } from './usecases/scheduler/RunScheduler';
+import { ReminderUseCases } from './usecases/reminders/ReminderUseCases';
+import { ReconcileNotifications } from './usecases/notifications/ReconcileNotifications';
+import { SyncContactReferences } from './usecases/contacts/SyncContactReferences';
+import { StartupReconciliation } from './usecases/startup/StartupReconciliation';
+import { HistoryQueries } from './usecases/history/HistoryQueries';
 
 export interface Adapters {
   readonly clock: Clock;
