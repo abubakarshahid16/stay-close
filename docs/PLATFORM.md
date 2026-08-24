@@ -271,6 +271,38 @@ exactly why it needs verifying early. Added to §6.
 
 ---
 
+### 3.2 The web driver must not be reachable from a native import graph
+
+Web uses sql.js; native uses expo-sqlite. Selecting between them at runtime
+does not work, and the failure is a **build** failure rather than a runtime one.
+
+sql.js ships a Node build that calls `require("node:fs")`. Metro cannot resolve
+`node:fs` for a native target, so any import path that reaches SqlJsDriver
+breaks the Android bundle outright:
+
+```
+Unable to resolve module node:fs from node_modules/sql.js/dist/sql-wasm.js
+```
+
+A `Platform.OS` check cannot prevent this. It is evaluated at runtime, long
+after bundling, by which point both branches have already had to resolve.
+
+The selection is therefore made by **module resolution**, not by a branch:
+
+| File | Bundled for |
+|---|---|
+| `src/adapters/persistence/openPlatformDriver.ts` | native (expo-sqlite) |
+| `src/adapters/persistence/openPlatformDriver.web.ts` | web (sql.js) |
+
+Metro picks by filename, so neither driver is parsed for the other platform.
+
+**This is easy to reintroduce and hard to notice.** Nothing catches it except
+actually bundling for Android: unit tests do not bundle, the web build resolves
+sql.js correctly because on web it is correct, and a debug APK skips JS
+bundling entirely. It reached seven released tags unseen. `npm run
+bundle:android` runs on every push for this reason.
+
+
 ## 4. Background execution — the constraint that shapes the architecture
 
 **This is the most important finding in this document.**
