@@ -11,10 +11,16 @@
  *   - iOS home-screen meta tags
  *   - a service-worker registration
  *
- * Nothing more. An earlier version also forced a one-time reload so the page
- * would be controlled by the worker, for cross-origin isolation headers the
- * worker used to add. Those headers blocked the app's own JS bundle, so both
- * they and the reload are gone.
+ * The registration script also performs ONE guarded reload. expo-sqlite's web
+ * build needs SharedArrayBuffer, which needs cross-origin isolation, which needs
+ * headers only the service worker can add — and the first load happens before
+ * the worker controls the page. Without that reload the database hangs forever
+ * on a first visit.
+ *
+ * The reload is guarded three ways: skipped if already isolated, skipped if the
+ * page is already controlled (which would mean the headers are not working and
+ * reloading would loop), and skipped if it has already been attempted this
+ * session.
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -79,16 +85,38 @@ const injection = `
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Stay Close" />
     <script>
-      // Register the worker purely so the browser offers "Install app".
-      // Deliberately no reload: an earlier version forced one so the page would
-      // be controlled by the worker (for cross-origin isolation headers that
-      // turned out to break asset loading). Registration alone is enough for
-      // installability, and a failure here must not affect the app.
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function () {
-          navigator.serviceWorker.register('${BASE}/sw.js').catch(function () {});
+      // The worker supplies the cross-origin isolation headers that
+      // expo-sqlite's SharedArrayBuffer-based worker channel needs. The very
+      // first page load happens BEFORE the worker controls the page, so
+      // crossOriginIsolated is false and the database would hang. Reload once,
+      // guarded, so the second load is controlled and isolated.
+      (function () {
+        if (!('serviceWorker' in navigator)) return;
+
+        navigator.serviceWorker.register('${BASE}/sw.js').then(function (reg) {
+          var alreadyTried = sessionStorage.getItem('sc-iso-reload') === '1';
+
+          // Already isolated: nothing to do.
+          if (self.crossOriginIsolated) return;
+
+          // Controlled but still not isolated means the headers are not taking
+          // effect. Reloading again would loop, so stop and let the app show
+          // its own error rather than spin.
+          if (navigator.serviceWorker.controller) return;
+
+          if (!alreadyTried) {
+            sessionStorage.setItem('sc-iso-reload', '1');
+            // Wait for the worker to be ready so the reload is actually
+            // controlled, rather than racing it.
+            (reg.active ? Promise.resolve() : navigator.serviceWorker.ready).then(function () {
+              window.location.reload();
+            });
+          }
+        }).catch(function () {
+          // No worker means no isolation, so the database cannot open. The app
+          // surfaces that on its own error screen instead of hanging.
         });
-      }
+      })();
     </script>
 `;
 

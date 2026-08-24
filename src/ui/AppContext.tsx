@@ -72,6 +72,67 @@ function deviceCallingCode(): string | undefined {
   return codes[region];
 }
 
+/**
+ * Opening the database must never hang indefinitely.
+ *
+ * On web, expo-sqlite talks to its worker with SharedArrayBuffer and
+ * Atomics.wait. If the page is not cross-origin isolated the worker never
+ * replies and the promise simply never settles — the user sees a loading
+ * spinner forever, with nothing to act on. A timeout turns that into a stated
+ * problem.
+ */
+const BOOT_TIMEOUT_MS = 20_000;
+
+class BootTimeout extends Error {
+  constructor() {
+    super('Timed out opening the database.');
+  }
+}
+
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new BootTimeout()), ms);
+    work.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+/**
+ * Explain a boot failure in terms the user can act on, rather than surfacing a
+ * raw platform message.
+ */
+function describeBootFailure(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+
+  if (Platform.OS === 'web') {
+    // The specific, likely cause on web — and it is not the user's fault.
+    const isolated =
+      typeof globalThis !== 'undefined' &&
+      (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated === true;
+
+    if (!isolated) {
+      return (
+        'This browser could not start the local database because the page is not ' +
+        'cross-origin isolated. Reloading usually fixes it. If it keeps happening, ' +
+        'the Android app is the more reliable option.'
+      );
+    }
+    if (error instanceof BootTimeout) {
+      return 'The local database did not respond. Reloading usually fixes it.';
+    }
+  }
+
+  return raw;
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [boot, setBoot] = useState<BootState>({ phase: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -82,8 +143,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       setBoot({ phase: 'loading' });
       try {
-        const db = await ExpoSqlDriver.open();
-        const status = await prepareDatabase(db);
+        // Timed: a hung open must surface as an error, not an endless spinner.
+        const db = await withTimeout(ExpoSqlDriver.open(), BOOT_TIMEOUT_MS);
+        const status = await withTimeout(prepareDatabase(db), BOOT_TIMEOUT_MS);
         if (cancelled) return;
 
         if (status.kind !== 'ready') {
@@ -112,7 +174,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Generates any cycles missed while the app was closed, and repairs
         // notification drift. Isolated steps: a failure here does not block
         // the app from opening.
-        const startup = await container.startup.run();
+        // Reconciliation is isolated internally, but a hung platform call must
+        // not hold the whole app on a spinner either.
+        const startup = await withTimeout(container.startup.run(), BOOT_TIMEOUT_MS);
         if (cancelled) return;
 
         setBoot({ phase: 'ready', container, startup });
@@ -120,10 +184,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         setBoot({
           phase: 'failed',
-          status: {
-            kind: 'unavailable',
-            detail: error instanceof Error ? error.message : String(error),
-          },
+          status: { kind: 'unavailable', detail: describeBootFailure(error) },
         });
       }
     })();

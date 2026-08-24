@@ -29,6 +29,16 @@ function BootGate({ children }: { children: React.ReactNode }) {
         <Body dim>{boot.status.detail}</Body>
         <Spacer />
         <Button label="Try again" variant="primary" onPress={retry} />
+        <Spacer size={8} />
+        <Button
+          label="Reload the page"
+          onPress={() => {
+            // On web a full reload re-registers the service worker, which is
+            // what supplies the isolation headers the database needs. Retry
+            // alone cannot fix that, because it does not reload the document.
+            if (typeof window !== 'undefined' && window.location) window.location.reload();
+          }}
+        />
       </Screen>
     );
   }
