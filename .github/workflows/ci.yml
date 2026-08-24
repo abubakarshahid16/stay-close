@@ -1,4 +1,4 @@
-name: CI — Lint & Test
+name: CI
 
 on:
   push:
@@ -6,17 +6,24 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPO_NO_TELEMETRY: '1'
+
 jobs:
-  test:
-    name: Run Tests
+  # Everything here is blocking. The previous config marked component tests
+  # continue-on-error and never ran lint or the db suites at all, so a red
+  # build could still look green (issue 005).
+  verify:
+    name: Lint · Typecheck · Unit
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
@@ -24,31 +31,43 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Type-check
-        run: npx tsc --noEmit
+      - name: Lint
+        run: npm run lint
 
-      - name: Run unit tests
-        run: npx jest --testPathPattern='__tests__/unit' --passWithNoTests --ci --forceExit
-        env:
-          EXPO_NO_TELEMETRY: '1'
+      - name: Typecheck
+        run: npm run typecheck
 
-      - name: Run component tests
-        run: npx jest --testPathPattern='__tests__/components' --passWithNoTests --ci --forceExit
-        continue-on-error: true
-        env:
-          EXPO_NO_TELEMETRY: '1'
+      # Domain, application and simulation suites. No native or platform
+      # dependency, so a failure here is always a real failure.
+      - name: Unit tests
+        run: npm test -- --ci
 
-      - name: Coverage report (non-blocking)
-        if: always()
-        run: npx jest --testPathPattern='__tests__/(unit|components)' --passWithNoTests --coverage --forceExit
-        continue-on-error: true
-        env:
-          EXPO_NO_TELEMETRY: '1'
+  adapters:
+    name: Adapter tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
+      - uses: actions/setup-node@v4
         with:
-          name: coverage
-          path: coverage/
-          retention-days: 7
+          node-version: '22'
+          cache: 'npm'
+
+      # better-sqlite3 is an optionalDependency needing a native toolchain.
+      # It builds here on ubuntu; contributors without MSVC on Windows can
+      # still run the unit project (docs/ARCHITECTURE.md §7).
+      - name: Install dependencies
+        run: npm ci
+
+      # Forced explicitly: newer npm gates install scripts behind
+      # allow-scripts, so relying on the implicit node-gyp run during install
+      # is not safe. This must succeed here even though it cannot on a Windows
+      # machine without MSVC.
+      - name: Build native SQLite
+        run: npm rebuild better-sqlite3 --foreground-scripts
+
+      - name: Verify native SQLite loads
+        run: node -e "require('better-sqlite3'); console.log('better-sqlite3 OK')"
+
+      - name: Adapter tests
+        run: npm run test:adapters -- --ci --passWithNoTests

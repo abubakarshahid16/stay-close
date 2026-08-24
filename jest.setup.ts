@@ -1,25 +1,12 @@
-// Global Jest setup for Stay Close
-// The __mocks__/ directory at project root is automatically used by Jest
-// for manual mocks of node_modules — no factory function needed.
+// Global Jest setup.
+//
+// Deliberately minimal. The domain, application and simulation suites have no
+// platform dependencies at all (docs/ARCHITECTURE.md §7), so nothing needs
+// mocking for them to run. Adapter suites mock the specific expo module they
+// exercise, locally, in their own file — a global mock registry hides which
+// test actually depends on which platform API.
 
-jest.mock('expo-sqlite');
-jest.mock('expo-contacts');
-jest.mock('expo-notifications');
-jest.mock('expo-file-system');
-jest.mock('expo-file-system/legacy', () => ({
-  documentDirectory: 'file:///mock-documents/',
-  cacheDirectory: 'file:///mock-cache/',
-  readAsStringAsync: jest.fn().mockResolvedValue('{}'),
-  writeAsStringAsync: jest.fn().mockResolvedValue(undefined),
-  deleteAsync: jest.fn().mockResolvedValue(undefined),
-  getInfoAsync: jest.fn().mockResolvedValue({ exists: false, isDirectory: false }),
-  makeDirectoryAsync: jest.fn().mockResolvedValue(undefined),
-  EncodingType: { UTF8: 'utf8', Base64: 'base64' },
-}));
-jest.mock('expo-sharing');
-jest.mock('expo-router');
-
-// Silence React Native warnings in tests
+// Keep test output readable without hiding errors.
 global.console = {
   ...console,
   warn: jest.fn(),

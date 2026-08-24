@@ -2,7 +2,7 @@
   "expo": {
     "name": "Stay Close",
     "slug": "stay-close",
-    "platforms": ["ios", "android", "web"],
+    "platforms": ["ios", "android"],
     "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.stayclose.app",
       "infoPlist": {
-        "NSContactsUsageDescription": "Stay Close uses your contacts so you can choose the people you want to stay connected with. Your contacts are never uploaded from your device."
+        "NSContactsUsageDescription": "Stay Close uses your contacts so you can choose the people you want to stay connected with. Your contacts never leave your device."
       }
     },
     "android": {
@@ -32,16 +32,6 @@
         "android.permission.RECEIVE_BOOT_COMPLETED"
       ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro",
-      "output": "single",
-      "name": "Stay Close",
-      "shortName": "Stay Close",
-      "description": "A private relationship reminder. No cloud, no tracking.",
-      "themeColor": "#7C3AED",
-      "backgroundColor": "#F7F6FB"
-    },
     "scheme": "stay-close",
     "plugins": [
       "expo-router",
@@ -56,13 +46,12 @@
       [
         "expo-contacts",
         {
-          "contactsPermission": "Stay Close uses your contacts so you can choose the people you want to stay connected with. Your contacts are never uploaded from your device."
+          "contactsPermission": "Stay Close uses your contacts so you can choose the people you want to stay connected with. Your contacts never leave your device."
         }
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "baseUrl": "/stay-close"
+      "typedRoutes": true
     }
   }
 }
