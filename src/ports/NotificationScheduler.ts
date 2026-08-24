@@ -30,6 +30,19 @@ export interface NotificationContent {
   readonly body: string;
 }
 
+/**
+ * A notification the OS currently holds for us.
+ *
+ * The time is part of this on purpose. Reconciliation has to detect *time*
+ * drift, not just presence: when a reminder is snoozed its due time moves, and
+ * a presence-only check would happily leave the old notification in place to
+ * fire at the original moment.
+ */
+export interface ScheduledNotification {
+  readonly id: ReminderId;
+  readonly at: Instant;
+}
+
 export interface NotificationScheduler {
   permission(): Promise<NotificationPermission>;
   request(): Promise<NotificationPermission>;
@@ -44,6 +57,9 @@ export interface NotificationScheduler {
   /** Cancel by reminder. Must not throw when nothing is scheduled. */
   cancel(id: ReminderId): Promise<void>;
 
-  /** Every reminder id currently registered with the OS. Used for drift repair. */
-  listScheduled(): Promise<readonly ReminderId[]>;
+  /**
+   * Everything currently registered with the OS, with its scheduled time.
+   * Used for drift repair — see ScheduledNotification.
+   */
+  listScheduled(): Promise<readonly ScheduledNotification[]>;
 }
