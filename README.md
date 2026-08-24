@@ -11,7 +11,7 @@ No backend. No account. No network requests. Your contacts never leave your devi
 
 ## Install
 
-<a href="https://github.com/abubakarshahid16/stay-close/releases/latest">
+<a href="https://github.com/abubakarshahid16/stay-close/releases">
   <img src="https://img.shields.io/badge/Download%20APK-Android-brightgreen?style=for-the-badge&logo=android&logoColor=white" alt="Download the Android APK" />
 </a>
 
@@ -20,64 +20,61 @@ No backend. No account. No network requests. Your contacts never leave your devi
   <img src="https://img.shields.io/badge/Open%20Web%20App-Any%20browser-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Open the web app" />
 </a>
 
-**Android:** download the `.apk` from the [latest release](https://github.com/abubakarshahid16/stay-close/releases/latest),
-open it on your phone, and allow installing from your browser once.
+**Android** — open the releases page above, download the `.apk` from the newest release, and open
+it on your phone. Android asks you to allow installing from your browser; allow it once.
 
-**Web:** open the link above in any browser. It is installable — Chrome and Edge show an
-**Install** button in the address bar; on iPhone use Safari's **Share → Add to Home Screen**.
+**iPhone** — open the web app in Safari, then **Share → Add to Home Screen**. There is no native
+iOS build: Apple does not permit sideloading, so an iPhone app has to go through TestFlight or the
+App Store, and both need a paid Apple Developer account. This is a platform restriction, not
+something left undone.
 
-**iOS native:** not available. iPhones cannot sideload, so a native iOS build needs TestFlight or
-the App Store — neither is set up. The web app is the iPhone route for now.
+**Desktop** — open the web app in any browser. Chrome and Edge offer an **Install** button in the
+address bar.
 
-### Web is deliberately limited
+### What works where
 
-Not a rough edge — two hard browser limitations:
+Web is limited by two hard browser restrictions, not by unfinished work:
 
-| | Android app | Web |
+| | Android app | Web / iPhone |
 |---|---|---|
 | Pick people from your contacts | Yes | **No** — browsers have no address book, so you type people in |
-| Reminders when the app is closed | Yes | **No** — browsers cannot schedule those without a server |
+| Reminders while the app is closed | Yes | **No** — browsers cannot schedule those without a server |
 
 Groups, schedules, fair rotation, the whole reminder lifecycle and history all work on web. You
-just see your due reminders when you open the page rather than being nudged. **A phone is where it
-works as intended;** web is good for trying it and for using it at a desk.
+just see due reminders when you open it rather than being nudged. **A phone is where it works as
+intended;** web is good for trying it and for using it at a desk.
 
 <details>
 <summary><strong>Read this before installing</strong></summary>
 
-- The APK is **debug-signed** for direct install, not a store release. It is larger and slower
-  than a store build.
-- **No release exists yet.** The button above will 404 until a `v*.*.*` tag is pushed, which
-  triggers the build workflow.
-- **Not verified on real hardware.** Notification delivery with the app closed, reboot recovery
-  and offline operation are specified in `docs/DEVICE_VERIFICATION.md` but have not been tested
-  on a device. If reminders do not arrive when the app is closed, that is a known unverified
-  area rather than a surprise.
+- The APK is a **release build signed with the standard Android debug key**, so it installs
+  directly but is not suitable for the Play Store. The signing key is fixed, so updates install
+  over the top rather than forcing an uninstall.
+- Releases are marked **pre-release** because the app has not been verified on real hardware.
+  Notification delivery with the app closed, reboot recovery and offline operation are specified
+  in `docs/DEVICE_VERIFICATION.md` and tested in CI, but no one has yet run this on a phone. If
+  reminders do not arrive when the app is closed, that is a known unverified area rather than a
+  surprise — please open an issue with your phone model and Android version.
+- Android 6.0 and later, `arm64-v8a` and `armeabi-v7a`. x86 emulator images are not included.
 
 </details>
 
 ---
 
-## Status: Functional V1 in progress
-
-This branch is a **ground-up rebuild**, not an update. It replaces an earlier "Circles" version
-with a different product design — see `docs/PRODUCT.md` §8 for the full list of deliberate
-differences.
-
-**There is no installable build yet.** No APK, no App Store or Play Store listing, and no web
-version. The previous release artefacts and the PWA are gone: web is explicitly not a V1 target
-(`docs/PRODUCT.md` §7). Running it today means building it yourself (§Development below).
+## Status
 
 | | |
 |---|---|
 | Functional core | Complete — contacts, groups, schedules, rotation, reminders, notifications, history |
-| Test suite | 549 tests, 22 suites, all passing |
-| Screens | Placeholder only. Phase A is deliberately utilitarian; UI work is Phase B |
+| Test suite | 561 tests, 23 suites, all passing |
+| Android APK | Built and published on every `v*.*.*` tag |
+| Web app | Deployed to GitHub Pages, exercised in Chromium and WebKit on every push |
+| Screens | Functional, deliberately plain. Phase A is utilitarian; visual design is Phase B |
 | On-device verification | **Not done** — see `docs/DEVICE_VERIFICATION.md` |
 
-That last row is the honest gap. The logic is tested; the app has not been run on a phone.
+That last row is the honest gap: the logic is tested and the builds are exercised in CI, but the
+app has not been run on a physical phone.
 
----
 
 ## The problem
 
@@ -146,7 +143,7 @@ Requires **Node 24+** (the test suite uses the built-in `node:sqlite`).
 
 ```bash
 npm install
-npm run test:all     # 549 tests, no native build or device needed
+npm run test:all     # 561 tests, no native build or device needed
 npm run typecheck
 npm run lint
 ```

@@ -16,7 +16,9 @@
     "build:web": "expo export --platform web && node scripts/inject-pwa.mjs",
     "smoke:web": "node scripts/smoke-web.mjs",
     "e2e:web": "node scripts/e2e-web.mjs",
-    "verify:web": "npm run build:web && npm run smoke:web && npm run e2e:web"
+    "verify:web": "npm run build:web && npm run smoke:web && npm run e2e:web && npm run check:ios-web",
+    "icons": "node scripts/generate-icons.mjs",
+    "check:ios-web": "node scripts/ios-web-check.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "^57.0.13",

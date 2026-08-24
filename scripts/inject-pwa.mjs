@@ -60,12 +60,31 @@ writeFileSync(join(DIST, 'manifest.json'), JSON.stringify(manifest, null, 2));
 // better than a missing one, which blocks installability entirely.
 
 mkdirSync(join(DIST, 'icons'), { recursive: true });
-const source = existsSync('assets/icon.png') ? 'assets/icon.png' : null;
-if (source) {
-  copyFileSync(source, join(DIST, 'icons', 'icon-192.png'));
-  copyFileSync(source, join(DIST, 'icons', 'icon-512.png'));
-} else {
-  console.warn('[inject-pwa] assets/icon.png missing — the install prompt may not appear');
+
+// Each icon is now served at the size the manifest claims it is.
+//
+// The previous version copied assets/icon.png to BOTH sizes, and that file was
+// a 48x48 image containing a single flat colour. So the manifest advertised a
+// 192 and a 512 while serving neither, and the icon a user would have pinned to
+// their home screen was a blank square. Chrome also wants a genuine 512 before
+// it offers installation, which is part of why no install button appeared.
+//
+// scripts/generate-icons.mjs derives these from the one real logo in the repo.
+
+const ICONS = [
+  ['assets/favicon.png', join(DIST, 'icons', 'icon-192.png')],
+  ['assets/icon-512.png', join(DIST, 'icons', 'icon-512.png')],
+  // iOS ignores the manifest icons entirely and reads this link instead.
+  // Without it, Add to Home Screen pins a screenshot of the page.
+  ['assets/apple-touch-icon.png', join(DIST, 'apple-touch-icon.png')],
+];
+
+for (const [from, to] of ICONS) {
+  if (!existsSync(from)) {
+    console.error(`[inject-pwa] ${from} missing - run: node scripts/generate-icons.mjs`);
+    process.exit(1);
+  }
+  copyFileSync(from, to);
 }
 
 // ── sql.js wasm ─────────────────────────────────────────────────────────────
@@ -115,6 +134,8 @@ const injection = `
     <meta name="theme-color" content="#1c1c1c" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Stay Close" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" href="${BASE}/apple-touch-icon.png" />
     <style>
       #sc-diag {
         display: none;

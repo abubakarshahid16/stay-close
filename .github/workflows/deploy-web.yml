@@ -72,14 +72,30 @@ jobs:
       # check cannot catch a JS syntax error, a react/react-dom version
       # mismatch, or a wasm URL that resolves to the SPA fallback — all of which
       # actually happened. Only executing it can.
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Smoke test the built app in Chromium
         run: npm run smoke:web
 
       - name: Drive the core flow in Chromium
         run: npm run e2e:web
+
+      # The README sends iPhone users here, because there is no native iOS
+      # build. That claim was never actually tested: every check above runs
+      # Chromium, which is not the engine an iPhone uses. This runs WebKit under
+      # an iPhone profile and checks what Add to Home Screen depends on.
+      - name: Verify the iPhone route in WebKit
+        run: npm run check:ios-web
+
+      - name: Upload the WebKit screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-web-screenshot
+          path: ios-web-check.png
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Confirm the PWA wiring landed
         run: |
@@ -88,6 +104,11 @@ jobs:
           done
           grep -q 'manifest.json' dist/index.html || { echo "::error::manifest not linked"; exit 1; }
           grep -q 'serviceWorker' dist/index.html || { echo "::error::worker not registered"; exit 1; }
+
+          for ICON in dist/icons/icon-192.png dist/icons/icon-512.png dist/apple-touch-icon.png; do
+            test -f "$ICON" || { echo "::error::$ICON missing - run npm run icons"; exit 1; }
+          done
+          grep -q 'apple-touch-icon' dist/index.html || { echo "::error::apple-touch-icon not linked; iOS would pin a screenshot"; exit 1; }
           echo "PWA wiring OK"
 
       - uses: actions/configure-pages@v4

@@ -30,3 +30,6 @@ coverage/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Screenshot written by scripts/ios-web-check.mjs
+ios-web-check.png

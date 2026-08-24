@@ -7,11 +7,21 @@ name: Build Android APK
 #   - pushing a v*.*.* tag  -> publishes a Release
 #   - manual dispatch       -> uploads a build artefact only, no Release
 #
-# The APK is DEBUG-SIGNED on purpose. A release build needs a keystore, and one
-# generated per run would change the signing identity every build, breaking
-# in-place upgrades for anyone who had already installed it. A debug-signed APK
-# sideloads fine, which is what "install directly from the repo" needs. It is not
-# suitable for Play Store submission.
+# This builds the RELEASE variant, signed with the standard Android debug key.
+#
+# It used to build the debug variant, and that APK was unusable: React Native
+# only embeds the JS bundle for variants NOT listed in `debuggableVariants`,
+# which defaults to ["debug"]. So the published APK contained no
+# index.android.bundle at all — it installed, launched, and then showed
+# "Unable to load script" because it was looking for a Metro dev server that
+# does not exist on a user's phone. Verified by parsing the central directory
+# of the published APK: 1327 entries, no bundle among them.
+#
+# The release variant embeds the bundle. Signing uses android/app/debug.keystore,
+# which Expo's template ships as a fixed file rather than generating per run
+# (verified: identical SHA-256 across a clean prebuild), so the signing identity
+# is stable and in-place upgrades keep working. That key is public, so this is
+# fine for direct install and NOT suitable for Play Store submission.
 
 on:
   push:
@@ -67,7 +77,9 @@ jobs:
         working-directory: android
         run: |
           set -o pipefail
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee gradle-output.txt
+          # x86/x86_64 are emulator architectures. Shipping all four made the
+          # APK 223 MB for a phone that can only ever use one of them.
+          ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a,armeabi-v7a 2>&1 | tee gradle-output.txt
 
       - name: Surface the Gradle failure
         if: failure() && steps.gradle.outcome == 'failure'
@@ -104,6 +116,37 @@ jobs:
           path: android/gradle-output.txt
           retention-days: 7
 
+      # THE release blocker for installability, and the reason v2.0.0-alpha.7
+      # shipped an APK that could not start.
+      #
+      # React Native embeds the JS bundle only for variants that are not listed
+      # in `debuggableVariants` (default: ["debug"]). Building the debug variant
+      # therefore produced an APK with no index.android.bundle, which installs
+      # perfectly and then fails at launch with "Unable to load script" because
+      # it expects a Metro dev server. Nothing in the build fails when this
+      # happens, which is why it went unnoticed through seven tags.
+      - name: Verify the JS bundle is actually inside the APK
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK" || { echo "::error::APK not found at $APK"; exit 1; }
+
+          echo "APK size: $(du -h "$APK" | cut -f1)"
+          echo "--- ABIs ---"
+          unzip -l "$APK" | grep -oE 'lib/[^/]+' | sort -u || true
+
+          if ! unzip -l "$APK" | grep -q 'assets/index.android.bundle'; then
+            echo "::error::No index.android.bundle in the APK. It would install and then show 'Unable to load script'. Build the release variant, not debug."
+            unzip -l "$APK" | grep 'assets/' || echo "(no assets/ entries at all)"
+            exit 1
+          fi
+
+          BUNDLE_SIZE=$(unzip -l "$APK" | awk '/assets\/index.android.bundle/ {print $1}')
+          echo "JS bundle embedded: ${BUNDLE_SIZE} bytes"
+          if [ "${BUNDLE_SIZE:-0}" -lt 100000 ]; then
+            echo "::error::JS bundle is only ${BUNDLE_SIZE} bytes - suspiciously small"
+            exit 1
+          fi
+
       # The permission audit's release blocker (docs/SECURITY.md section 3.5),
       # checked against the BUILT APK rather than the source manifest.
       #
@@ -113,7 +156,7 @@ jobs:
       # is the only artefact reflecting what a user actually installs.
       - name: Verify permissions in the built APK
         run: |
-          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          APK=android/app/build/outputs/apk/release/app-release.apk
           if [ ! -f "$APK" ]; then
             echo "::error::APK not found at $APK"
             exit 1
@@ -159,7 +202,7 @@ jobs:
           else
             NAME="stay-close-v${VERSION}-${GITHUB_SHA:0:7}.apk"
           fi
-          cp android/app/build/outputs/apk/debug/app-debug.apk "$NAME"
+          cp android/app/build/outputs/apk/release/app-release.apk "$NAME"
           echo "apk=$NAME" >> "$GITHUB_OUTPUT"
           ls -lh "$NAME"
 
