@@ -65,9 +65,25 @@ jobs:
       - name: Add PWA assets
         run: node scripts/inject-pwa.mjs
 
+      # Run the built app in a real browser before publishing it.
+      #
+      # This exists because the web build was shipped broken three times, each
+      # time "verified" by deploying it and looking at the page. A file-presence
+      # check cannot catch a JS syntax error, a react/react-dom version
+      # mismatch, or a wasm URL that resolves to the SPA fallback — all of which
+      # actually happened. Only executing it can.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test the built app in Chromium
+        run: npm run smoke:web
+
+      - name: Drive the core flow in Chromium
+        run: npm run e2e:web
+
       - name: Confirm the PWA wiring landed
         run: |
-          for FILE in dist/index.html dist/manifest.json dist/sw.js dist/404.html; do
+          for FILE in dist/index.html dist/manifest.json dist/sw.js dist/404.html                       dist/sql-wasm.wasm dist/sql-wasm-browser.wasm; do
             test -f "$FILE" || { echo "::error::$FILE missing"; exit 1; }
           done
           grep -q 'manifest.json' dist/index.html || { echo "::error::manifest not linked"; exit 1; }

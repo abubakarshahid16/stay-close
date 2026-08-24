@@ -106,10 +106,27 @@ async function saveSnapshot(bytes: Uint8Array): Promise<void> {
   }
 }
 
-/** Where the sql.js wasm lives, resolved against the deployed base path. */
+/**
+ * Where the sql.js wasm lives.
+ *
+ * Resolved against an explicit base injected at build time, NOT against
+ * document.baseURI. On a deep link such as /groups/3, baseURI-relative
+ * resolution produces /groups/sql-wasm-browser.wasm, which does not exist —
+ * and a static host answers a missing file with the SPA fallback, so the wasm
+ * loader receives HTML and fails with a confusing "expected magic word" error.
+ */
 function wasmUrl(file: string): string {
+  const injected =
+    typeof globalThis !== 'undefined'
+      ? (globalThis as { __SC_BASE__?: string }).__SC_BASE__
+      : undefined;
+
+  if (injected) return `${injected.replace(/\/$/, '')}/${file}`;
+
+  // Dev server, or an unexpectedly missing injection: the app is served from
+  // the root there, so an absolute path is correct.
   if (typeof document !== 'undefined' && document.baseURI) {
-    return new URL(file, document.baseURI).toString();
+    return new URL(`/${file}`, document.baseURI).toString();
   }
   return `./${file}`;
 }

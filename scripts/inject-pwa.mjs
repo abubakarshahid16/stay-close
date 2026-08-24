@@ -72,11 +72,29 @@ if (source) {
 // sql.js fetches this at runtime, resolved against document.baseURI by
 // SqlJsDriver. It is not a Metro asset, so it has to be copied explicitly.
 
-const SQL_WASM = join('node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
-if (existsSync(SQL_WASM)) {
-  copyFileSync(SQL_WASM, join(DIST, 'sql-wasm.wasm'));
-} else {
-  console.error('[inject-pwa] sql.js wasm missing — the web database cannot start');
+// sql.js publishes conditional exports: the "browser" condition resolves to
+// sql-wasm-browser.js, which fetches sql-wasm-browser.wasm, while Node's
+// "default" condition uses sql-wasm.js and sql-wasm.wasm. Which one the bundler
+// picks is not ours to assume — and getting it wrong is silent, because a
+// missing .wasm gets the SPA fallback and the loader receives HTML.
+//
+// This is precisely how the web build failed: the Node tests passed on
+// sql-wasm.wasm while the browser asked for sql-wasm-browser.wasm.
+// Copy both.
+
+const SQL_WASM_FILES = ['sql-wasm.wasm', 'sql-wasm-browser.wasm'];
+let copiedWasm = 0;
+
+for (const name of SQL_WASM_FILES) {
+  const source = join('node_modules', 'sql.js', 'dist', name);
+  if (existsSync(source)) {
+    copyFileSync(source, join(DIST, name));
+    copiedWasm++;
+  }
+}
+
+if (copiedWasm === 0) {
+  console.error('[inject-pwa] no sql.js wasm found — the web database cannot start');
   process.exit(1);
 }
 
@@ -92,6 +110,7 @@ if (existsSync(join('public', 'sw.js'))) {
 // ── inject into index.html ──────────────────────────────────────────────────
 
 const injection = `
+    <script>window.__SC_BASE__ = '${BASE}';</script>
     <link rel="manifest" href="${BASE}/manifest.json" />
     <meta name="theme-color" content="#1c1c1c" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -126,6 +145,7 @@ const injection = `
        * leaving a white screen.
        */
       (function () {
+        var NL = String.fromCharCode(10);
         var problems = [];
 
         function record(label, detail) {
@@ -152,17 +172,12 @@ const injection = `
           if (!el) return;
           el.style.display = 'block';
           document.getElementById('sc-diag-body').textContent =
-            problems.length ? problems.join('
-
-') : 'The app did not start, and reported no error.';
+            problems.length ? problems.join(NL + NL) : 'The app did not start, and reported no error.';
           document.getElementById('sc-diag-env').textContent =
-            'crossOriginIsolated: ' + (self.crossOriginIsolated === true) +
-            '
-SharedArrayBuffer: ' + (typeof SharedArrayBuffer !== 'undefined') +
-            '
-serviceWorker controlled: ' + (!!(navigator.serviceWorker && navigator.serviceWorker.controller)) +
-            '
-userAgent: ' + navigator.userAgent;
+            'crossOriginIsolated: ' + (self.crossOriginIsolated === true) + NL +
+            'SharedArrayBuffer: ' + (typeof SharedArrayBuffer !== 'undefined') + NL +
+            'serviceWorker controlled: ' + (!!(navigator.serviceWorker && navigator.serviceWorker.controller)) + NL +
+            'userAgent: ' + navigator.userAgent;
         }
 
         // Give the bundle a fair chance before declaring failure.

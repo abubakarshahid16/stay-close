@@ -13,7 +13,10 @@
     "test:adapters": "jest --selectProjects adapters --runInBand",
     "test:all": "jest --runInBand",
     "web": "expo start --web",
-    "build:web": "expo export --platform web && node scripts/inject-pwa.mjs"
+    "build:web": "expo export --platform web && node scripts/inject-pwa.mjs",
+    "smoke:web": "node scripts/smoke-web.mjs",
+    "e2e:web": "node scripts/e2e-web.mjs",
+    "verify:web": "npm run build:web && npm run smoke:web && npm run e2e:web"
   },
   "dependencies": {
     "@expo/metro-runtime": "^57.0.13",
@@ -28,7 +31,7 @@
     "expo-sqlite": "~57.0.1",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
-    "react-dom": "^19.2.8",
+    "react-dom": "19.2.3",
     "react-native": "0.86.2",
     "react-native-gesture-handler": "^3.2.1",
     "react-native-reanimated": "^4.5.3",
@@ -55,6 +58,7 @@
     "eslint-plugin-react-native": "^4.1.0",
     "jest": "^29.7.0",
     "jest-expo": "~57.0.4",
+    "playwright": "^1.62.1",
     "prettier": "^3.2.5",
     "typescript": "~6.0.3"
   },
