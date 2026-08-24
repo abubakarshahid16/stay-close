@@ -1,301 +1,302 @@
 # Architecture
 
-## Overview
-
-Stay Close is a local-first, offline-capable mobile application. All user data — contacts, circles, reminders, and settings — lives exclusively on the user's device. There is no backend server, no cloud database, and no user account system.
-
-The architecture is intentionally simple because simplicity serves both the user and the privacy promise.
+> **Issue:** `002 [Architecture] Define technical architecture` (#13)
+> **Depends on:** `docs/PRODUCT.md`, `docs/DOMAIN.md`, `docs/PLATFORM.md`
+> **Status:** canonical. Supersedes the previous Circles-era architecture document.
 
 ---
 
-## System Architecture Diagram
+## 1. Goal
 
-```
-┌─────────────────────────────────────────────────┐
-│                   USER'S DEVICE                  │
-│                                                   │
-│  ┌─────────────────────────────────────────────┐ │
-│  │            React Native Application          │ │
-│  │                (Expo / TypeScript)           │ │
-│  │                                              │ │
-│  │  ┌──────────────┐    ┌────────────────────┐ │ │
-│  │  │  UI Layer     │    │  Business Logic    │ │ │
-│  │  │  (Expo Router)│    │  (Services)        │ │ │
-│  │  └──────┬───────┘    └────────┬───────────┘ │ │
-│  │         │                     │              │ │
-│  │  ┌──────▼─────────────────────▼───────────┐ │ │
-│  │  │              Data Layer                 │ │ │
-│  │  │         (Repositories / SQLite)         │ │ │
-│  │  └──────────────────────────────────────── ┘ │ │
-│  └─────────────────────────────────────────────┘ │
-│                                                   │
-│  ┌─────────────────┐  ┌────────────────────────┐ │
-│  │  OS Contacts API │  │  OS Notification API   │ │
-│  │  (expo-contacts) │  │  (expo-notifications)  │ │
-│  └─────────────────┘  └────────────────────────┘ │
-│                                                   │
-│  ┌─────────────────────────────────────────────┐ │
-│  │          Local SQLite Database               │ │
-│  │          (expo-sqlite)                       │ │
-│  └─────────────────────────────────────────────┘ │
-│                                                   │
-└─────────────────────────────────────────────────┘
+The scheduling and rotation engine is the heart of this product and the part most likely to
+break subtly. Therefore the single organising principle is:
 
-              NO NETWORK CALLS
-              NO CLOUD DATABASE
-              NO BACKEND SERVER
+> **The domain must be fully testable with no device, no database, and no clock.**
+
+Everything else in this document follows from that.
+
+---
+
+## 2. Layers and dependency direction
+
+```text
+┌──────────────────────────────────────────────┐
+│ Presentation      app/  — Expo Router screens│  basic controls only (Phase A)
+├──────────────────────────────────────────────┤
+│ Application       src/app/  — use cases      │  orchestrates; owns transactions
+├──────────────────────────────────────────────┤
+│ Domain            src/domain/  — pure logic  │  no I/O, no imports of anything below
+├──────────────────────────────────────────────┤
+│ Ports             src/ports/  — interfaces   │  declared by domain/application
+├──────────────────────────────────────────────┤
+│ Adapters          src/adapters/  — platform  │  expo-*, SQLite, Linking
+└──────────────────────────────────────────────┘
 ```
 
----
+**Dependencies point inward and never outward.** The domain declares the interfaces it needs
+(ports); adapters implement them. Composition happens once, at the app entry point.
 
-## Data Flow
+### 2.1 Hard rules
 
-```
-User's Phone Contacts
-        ↓
-OS Contacts API (expo-contacts)
-        ↓
-Mobile Application (with explicit OS permission)
-        ↓
-User selects specific people
-        ↓
-Local SQLite Database (selected people only)
-        ↓
-Reminder Engine (weighted selection algorithm)
-        ↓
-Local Notifications (expo-notifications)
-        ↓
-User responds → history recorded locally
-```
+These are enforced by lint (issue `005`) and reviewed on every PR:
 
-**There is no step involving a network request, a cloud server, or a remote database.**
+| Rule | Rationale |
+|---|---|
+| `src/domain/**` imports nothing from `src/adapters/**`, `app/**`, `expo-*`, or `react*` | Keeps the engine pure and testable in Node |
+| No SQL outside `src/adapters/persistence/**` | Repositories own persistence; nothing else knows SQLite exists |
+| No `expo-notifications` / `expo-contacts` import outside `src/adapters/**` | Platform APIs are never domain concerns |
+| No scheduling or rotation logic inside a React component | The engine must be testable without rendering |
+| No `new Date()`, `Date.now()`, or `Math.random()` outside `src/adapters/**` | Time and randomness are injected — §4.1, §4.2 |
+| Presentation reads through use cases, never a repository directly | Keeps transaction boundaries in one layer |
+
+The old Circles code violated four of these — the home screen ran selection, wrote history, and
+called the database directly on every render. That is the specific failure mode this layering
+exists to prevent.
 
 ---
 
-## Layer Responsibilities
+## 3. Directory layout
 
-### UI Layer
+```text
+app/                            Expo Router screens (Phase A: utilitarian)
+  _layout.tsx                   composition root — builds container, injects adapters
+  (tabs)/index.tsx              today's reminders
+  (tabs)/groups.tsx             group list
+  groups/[id]/...               group detail, member selection
+  reminders/[id].tsx            reminder detail + resolution actions
 
-- Expo Router file-based navigation
-- React Native screens and components
-- Local state management (React state + context)
-- Calls into Business Logic Layer only — never directly into database or OS APIs
-- Renders data returned by business logic
+src/
+  domain/                       PURE. No I/O. 100% unit-testable.
+    contact/                    ContactReference, availability, E.164 normalisation
+    group/                      Group, Membership
+    schedule/                   Schedule model, cadence + occurrence maths
+    rotation/                   eligibility, priority ladder, fair selection
+    reminder/                   ReminderInstance, state machine, transitions
+    history/                    ContactEvent, recency derivation
+    metrics/                    derived scorecard calculations
+    shared/                     Result type, domain errors, branded ids
 
-### Business Logic Layer (Services)
+  app/                          Application layer — use cases
+    scheduler/                  RunScheduler, ReconcileOnStartup
+    reminders/                  CompleteReminder, SnoozeReminder, SkipReminder,
+                                DeprioritizeReminder
+    groups/                     CreateGroup, EditGroup, DeleteGroup, membership ops
+    contacts/                   SyncContactReferences
+    notifications/              ReconcileNotifications
 
-- `ContactService` — wraps OS contact permission and loading
-- `CircleService` — creates, reads, updates, deletes circles
-- `ReminderEngine` — weighted selection algorithm
-- `NotificationService` — schedules and manages local notifications
-- `BackupService` — exports and imports local data
-- `SettingsService` — reads and writes application settings
-- Services call into Repositories for persistence
-- Services call into OS APIs via Expo abstractions
+  ports/                        Interfaces the inner layers depend on
+    Clock.ts  Random.ts  ContactProvider.ts  NotificationScheduler.ts
+    CommunicationLauncher.ts  UnitOfWork.ts  repositories/*.ts
 
-### Data Layer (Repositories)
+  adapters/
+    persistence/                expo-sqlite: migrations, repositories, UnitOfWork
+    contacts/                   expo-contacts (SDK 57 class API)
+    notifications/              expo-notifications (DATE triggers only)
+    communication/              Linking: tel:, https://wa.me/
+    system/                     SystemClock, CryptoRandom
 
-- `CircleRepository` — CRUD for circles
-- `CirclePeopleRepository` — CRUD for people within circles
-- `ReminderHistoryRepository` — records reminder events
-- `SettingsRepository` — persists application settings
-- All SQL is parameterised — no string concatenation of untrusted values
-- All operations wrapped in transactions where appropriate
-- Type-safe return types throughout
+  container.ts                  dependency wiring (production)
 
-### Database
-
-- SQLite via expo-sqlite
-- Schema migrations versioned and sequential
-- Foreign keys enforced
-- Indexes on frequently queried columns
-
----
-
-## Technology Stack
-
-| Concern | Technology | Justification |
-|---|---|---|
-| Framework | React Native + Expo | Cross-platform, strong Expo ecosystem support |
-| Language | TypeScript | Type safety, maintainability |
-| Navigation | Expo Router | File-based routing, Expo native support |
-| Database | expo-sqlite | Local-only SQLite, no network, well-maintained |
-| Contacts | expo-contacts | OS-native contact access, no third-party uploads |
-| Notifications | expo-notifications | Local notification scheduling, no push server required |
-| Testing | Jest + React Native Testing Library | Standard React Native testing ecosystem |
-
----
-
-## Dependency Evaluation Criteria
-
-Before any dependency is added, all of the following must be answered:
-
-1. Why is it needed? Cannot Expo already provide this?
-2. Is it actively maintained?
-3. Does it make network requests?
-4. Does it collect telemetry or analytics?
-5. Does it require additional OS permissions?
-6. Does it contain native code requiring a custom dev client?
-7. Does it introduce security concerns?
-8. How will it be tested?
-
-Dependencies that make network requests, collect telemetry, or introduce unnecessary permissions will not be added.
-
----
-
-## Application Structure (Planned)
-
-```
-stay-close/
-├── app/                        # Expo Router screens
-│   ├── (onboarding)/
-│   │   ├── index.tsx           # Welcome / what the app does
-│   │   ├── contacts-privacy.tsx # Privacy explanation before permission
-│   │   └── notifications-privacy.tsx
-│   ├── (tabs)/
-│   │   ├── index.tsx           # Home — today's suggestion
-│   │   └── circles.tsx         # Circles list
-│   ├── circles/
-│   │   ├── [id].tsx            # Circle detail
-│   │   ├── create.tsx          # Create new circle
-│   │   └── [id]/select.tsx     # Contact selection for circle
-│   └── settings/
-│       └── index.tsx           # Settings + backup + delete data
-├── src/
-│   ├── db/
-│   │   ├── database.ts         # Database initialisation + migrations
-│   │   ├── migrations/
-│   │   │   └── 001_initial.ts
-│   │   └── repositories/
-│   │       ├── CircleRepository.ts
-│   │       ├── CirclePeopleRepository.ts
-│   │       ├── ReminderHistoryRepository.ts
-│   │       └── SettingsRepository.ts
-│   ├── services/
-│   │   ├── ContactService.ts
-│   │   ├── CircleService.ts
-│   │   ├── ReminderEngine.ts
-│   │   ├── NotificationService.ts
-│   │   ├── BackupService.ts
-│   │   └── SettingsService.ts
-│   ├── types/
-│   │   ├── circle.ts
-│   │   ├── contact.ts
-│   │   ├── reminder.ts
-│   │   └── settings.ts
-│   └── utils/
-│       ├── validation.ts
-│       └── date.ts
-├── __tests__/
-│   ├── unit/
-│   ├── db/
-│   ├── components/
-│   ├── integration/
-│   └── e2e/
-├── docs/
-└── .github/
+__tests__/
+  domain/                       pure unit tests — fake clock, seeded random
+  app/                          use-case tests — in-memory repositories
+  adapters/                     integration tests — real SQLite
+  simulation/                   long-horizon rotation fairness simulations
 ```
 
 ---
 
-## No-Network Contract
+## 4. The ports
 
-The application must satisfy all of the following at all times:
+Each port exists because a specific platform reality would otherwise leak into the domain.
+`docs/PLATFORM.md` justifies each one.
 
-- No HTTP requests from the application itself
-- No third-party SDKs that make HTTP requests
-- No Firebase, Firestore, or any cloud database client
-- No analytics SDK that phones home
-- No crash reporter that sends data over the network
-- No advertising SDK
-- No dependency that fetches resources on initialisation
+### 4.1 `Clock`
 
-This contract is verified:
-1. During code review for every PR
-2. By a network audit in Phase 10 (Security & Privacy Hardening)
-3. By testing in airplane mode as part of QA_CHECKLIST.md
-
----
-
-## State Management
-
-No external state management library (Redux, Zustand, etc.) is used. The application state requirements are:
-
-- Small enough for React context + local state
-- Persistent state lives in SQLite, not in memory
-- No complex cross-screen state synchronisation is needed
-
-If state management complexity grows during development, this decision will be revisited via an ADR.
-
----
-
-## Platform Considerations
-
-### iOS
-
-- Contacts permission: `NSContactsUsageDescription` in Info.plist
-- Notification permission: Runtime request via expo-notifications
-- Local SQLite database lives in app Documents directory
-- App can read contacts but cannot read call logs, messages, or WhatsApp
-
-### Android
-
-- Contacts permission: `READ_CONTACTS` in AndroidManifest.xml
-- Notification permission: Runtime request (Android 13+)
-- Local SQLite database lives in app-private storage
-- No `WRITE_CONTACTS`, `READ_CALL_LOG`, `READ_SMS` permissions — ever
-
-### Both Platforms
-
-- Contact identifiers differ between platforms — the data layer normalises this
-- Notification behaviour differs between platforms — tested separately
-- App must handle being killed and restarted without data loss
-- Scheduled notifications must survive app restart
-
----
-
-## Backup Architecture
-
-Because there is no cloud sync, Stay Close provides explicit local backup:
-
-```
-SQLite Database
-      ↓
-BackupService.export()
-      ↓
-JSON document (versioned schema)
-      ↓
-User shares to Files / Google Drive / iCloud / etc.
-
-Restore path:
-User selects backup file
-      ↓
-BackupService.validate()
-      ↓
-BackupService.import() — inside a transaction
-      ↓
-SQLite Database restored
+```ts
+interface Clock {
+  now(): Instant;                       // absolute UTC
+  timeZone(): TimeZoneId;               // device local zone
+}
 ```
 
-Backup files may contain personal information (contact names, circle memberships). The user is informed of this before export. Restore never destroys valid existing data if the import fails — the transaction rolls back.
+Why: cycle times are local wall-clock while stored instants are UTC (`DOMAIN.md` §13). DST,
+timezone changes, and month-boundary clamping are all domain logic that must be testable at
+arbitrary instants. Tests use `FakeClock`; production uses `SystemClock`.
+
+**No domain or application code may read the system clock directly.**
+
+### 4.2 `Random`
+
+```ts
+interface Random {
+  int(maxExclusive: number): number;
+  shuffle<T>(items: readonly T[]): T[];
+}
+```
+
+Why: rotation randomises *within* a priority tier (`DOMAIN.md` §7.1). Fairness must be asserted
+deterministically, so tests inject a seeded PRNG (mulberry32) and production injects an
+unseeded one. This is what keeps the fairness suite from being flaky.
+
+### 4.3 `ContactProvider`
+
+```ts
+interface ContactProvider {
+  permission(): Promise<ContactPermission>;   // granted|limited|denied|restricted|undetermined|unavailable
+  request(): Promise<ContactPermission>;
+  resolve(nativeId: NativeContactId): Promise<ResolvedContact | null>;
+  findByPhone(e164: string): Promise<ResolvedContact | null>;   // identifier-churn repair
+  list(options): Promise<ResolvedContact[]>;
+}
+```
+
+Why: `limited` access must be a first-class state, and `findByPhone` exists specifically to
+repair native-identifier churn (`PLATFORM.md` §1.3, `DOMAIN.md` §1.1). Never throws for a
+missing contact — returns `null`.
+
+### 4.4 `NotificationScheduler`
+
+```ts
+interface NotificationScheduler {
+  permission(): Promise<NotificationPermission>;
+  request(): Promise<NotificationPermission>;
+  scheduleAt(id: ReminderId, at: Instant, content: NotificationContent): Promise<void>;
+  cancel(id: ReminderId): Promise<void>;
+  listScheduled(): Promise<ReminderId[]>;     // required for reconciliation
+}
+```
+
+Why: `listScheduled` is not a convenience — it is how reconciliation detects drift between the
+database and the OS (`PLATFORM.md` §2.2). The identity is the `ReminderId`, giving a 1:1
+mapping between a database row and an OS notification, which is what makes idempotence
+checkable.
+
+### 4.5 `CommunicationLauncher`
+
+```ts
+interface CommunicationLauncher {
+  call(e164: string): Promise<LaunchResult>;
+  whatsApp(e164: string): Promise<LaunchResult>;
+}
+```
+
+Why: `LaunchResult` is a value, never a thrown error, because on iOS a user *cancelling* the
+`tel:` dialog rejects identically to a hard failure (`PLATFORM.md` §5.3). Launching never
+completes a reminder (`DOMAIN.md` §9). The interface is extensible to SMS/email without
+touching reminder logic (issue `039`).
+
+### 4.6 `UnitOfWork` and repositories
+
+```ts
+interface UnitOfWork {
+  transaction<T>(work: (repos: Repositories) => Promise<T>): Promise<T>;
+}
+```
+
+Why: a scheduler run must create reminders and record cycle state atomically, or idempotence is
+unprovable. The application layer owns transaction boundaries; the domain never sees them.
 
 ---
 
-## Security Boundaries
+## 5. How a scheduler run flows
 
-| Data | Location | Network Exposure |
-|---|---|---|
-| Contact names | SQLite (selected only) | None |
-| Phone numbers | SQLite (selected only) | None |
-| Circle definitions | SQLite | None |
-| Reminder history | SQLite | None |
-| App settings | SQLite | None |
-| Backup file | User-controlled file system | User's responsibility |
+Illustrating the layering on the most important operation:
 
-The application has no network boundary to protect because it makes no network requests.
+```text
+App launch (app/_layout.tsx)
+    → ReconcileOnStartup                            [application]
+        → UnitOfWork.transaction:
+            SyncContactReferences                   [application]
+                → ContactProvider.resolve / findByPhone   [adapter]
+                → ContactReference.repair / markUnavailable   [domain, pure]
+            RunScheduler                            [application]
+                → Schedule.dueOccurrences(clock)    [domain, pure]
+                → eligibility(members, history)     [domain, pure]
+                → rotation.select(candidates, n, random)   [domain, pure]
+                → ReminderInstance.create(...)      [domain, pure]
+                → reminderRepo.upsertForOccurrence(...)    [adapter, unique constraint]
+            ReconcileNotifications                  [application]
+                → NotificationScheduler.listScheduled()    [adapter]
+                → diff against pending reminders    [domain, pure]
+                → scheduleAt / cancel               [adapter]
+```
+
+Every step marked *pure* is a plain function over plain data — no mocks needed, only fakes for
+`Clock` and `Random`. That is the payoff of the layering.
+
+### 5.1 Idempotence is enforced at two levels
+
+1. **Domain:** occurrence identity is derived deterministically from
+   `(scheduleId, occurrenceInstant)` — the same run recomputes the same identity.
+2. **Persistence:** a `UNIQUE(schedule_id, occurrence_at, contact_reference_id)` constraint makes
+   duplicate insertion impossible even under a logic error or a concurrent run.
+
+Application-level checking alone is not trusted (`DOMAIN.md` §14.1).
 
 ---
 
-## Offline-First Commitment
+## 6. Error handling
 
-All core features work with zero network access. See PRODUCT.md for the complete list. This is tested in QA_CHECKLIST.md by explicitly enabling Airplane Mode before testing core flows.
+- Domain operations that can fail return a `Result<T, DomainError>`; they do not throw.
+  Invalid state transitions are values, so they can be asserted in tests.
+- Adapters translate platform exceptions into domain-meaningful values at the boundary — a
+  missing contact becomes `null`, a failed launch becomes a `LaunchResult`.
+- Unexpected exceptions propagate to a presentation-layer boundary that shows a plain error and
+  never silently swallows.
+- **No operation may destroy user history on failure.** Corrupt or unopenable local data
+  surfaces an explicit recovery path; it never auto-wipes (issue `044`).
+
+---
+
+## 7. Testing strategy
+
+| Layer | Test kind | Dependencies | Runs where |
+|---|---|---|---|
+| `src/domain/**` | unit | none — fakes for Clock/Random | Node, no native build |
+| `src/app/**` | use-case | in-memory repository fakes | Node, no native build |
+| `src/adapters/persistence/**` | integration | real SQLite | Node via adapter, or device |
+| `__tests__/simulation/**` | simulation | seeded Random, fake Clock | Node, no native build |
+| Presentation | smoke | mocked use cases | Node |
+| Device behaviour | manual | physical iOS + Android | hardware only |
+
+**Constraint from `PLATFORM.md` §3:** `better-sqlite3` needs a native toolchain that is absent
+on some machines (including MSVC on Windows). The domain, application, and simulation suites —
+the ones that matter most — must therefore run with **zero native dependencies**. Persistence
+integration tests are a separate, separately-invocable suite that is allowed to require a
+toolchain. CI runs both; a contributor without MSVC can still run the majority.
+
+Device-only verification is enumerated in `docs/PLATFORM.md` §6 and cannot be satisfied in CI.
+
+---
+
+## 8. What is deliberately not in this architecture
+
+- No backend, API client, or network layer of any kind.
+- No global mutable state or singleton database handle reachable from the domain.
+- No background task runner (`PLATFORM.md` §4).
+- No web/PWA target, service worker, or `react-native-web`.
+- No state-management library. React state plus use cases is sufficient for Phase A; adding one
+  before a measured need would be premature.
+- No ORM. Repositories over hand-written SQL keep the schema explicit and migrations honest.
+- No dependency-injection framework. `container.ts` is a plain function returning wired objects.
+
+---
+
+## 9. Composition root
+
+`app/_layout.tsx` is the only place where concrete adapters are named:
+
+```ts
+const container = createContainer({
+  clock: new SystemClock(),
+  random: new CryptoRandom(),
+  contacts: new ExpoContactProvider(),
+  notifications: new ExpoNotificationScheduler(),
+  communication: new LinkingCommunicationLauncher(),
+  db: await openDatabase(),
+});
+```
+
+Tests build the same container with fakes. Nothing else in the codebase constructs an adapter,
+which is what makes the dependency rules in §2.1 mechanically checkable.
