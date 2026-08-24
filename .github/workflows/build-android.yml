@@ -94,6 +94,15 @@ jobs:
           # wrong:", so grepping for the marker alone reports nothing useful —
           # capture the whole block.
           awk '/What went wrong:/,/^\* Try:/' gradle-output.txt > reason.txt || true
+          # Metro failures are the important special case, and the block above
+          # misses them completely. When JS bundling fails, Gradle reports only
+          # "Process 'command 'node'' finished with non-zero exit value 1" and
+          # names the task; the actual cause - an unresolvable module, a syntax
+          # error - is printed by Metro much earlier in the log. That gap cost a
+          # local reproduction to diagnose a one-line resolver error.
+          grep -E "Unable to resolve module|SyntaxError|Bundling failed|Import stack" \
+            gradle-output.txt | head -12 >> reason.txt || true
+
           grep -E "Caused by:|error:|Unsupported|Could not|Execution failed" gradle-output.txt \
             | head -20 >> reason.txt || true
 
