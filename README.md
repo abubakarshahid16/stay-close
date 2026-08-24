@@ -9,6 +9,34 @@ No backend. No account. No network requests. Your contacts never leave your devi
 
 ---
 
+## Install
+
+<a href="https://github.com/abubakarshahid16/stay-close/releases/latest">
+  <img src="https://img.shields.io/badge/Download%20APK-Android-brightgreen?style=for-the-badge&logo=android&logoColor=white" alt="Download the Android APK" />
+</a>
+
+**Android:** download the `.apk` from the [latest release](https://github.com/abubakarshahid16/stay-close/releases/latest),
+open it on your phone, and allow installing from your browser once.
+
+**iOS:** not available. iPhones cannot sideload, so an iOS build needs TestFlight or the App
+Store — neither is set up.
+
+<details>
+<summary><strong>Read this before installing</strong></summary>
+
+- The APK is **debug-signed** for direct install, not a store release. It is larger and slower
+  than a store build.
+- **No release exists yet.** The button above will 404 until a `v*.*.*` tag is pushed, which
+  triggers the build workflow.
+- **Not verified on real hardware.** Notification delivery with the app closed, reboot recovery
+  and offline operation are specified in `docs/DEVICE_VERIFICATION.md` but have not been tested
+  on a device. If reminders do not arrive when the app is closed, that is a known unverified
+  area rather than a surprise.
+
+</details>
+
+---
+
 ## Status: Functional V1 in progress
 
 This branch is a **ground-up rebuild**, not an update. It replaces an earlier "Circles" version
