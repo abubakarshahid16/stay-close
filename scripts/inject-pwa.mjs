@@ -68,6 +68,18 @@ if (source) {
   console.warn('[inject-pwa] assets/icon.png missing — the install prompt may not appear');
 }
 
+// ── sql.js wasm ─────────────────────────────────────────────────────────────
+// sql.js fetches this at runtime, resolved against document.baseURI by
+// SqlJsDriver. It is not a Metro asset, so it has to be copied explicitly.
+
+const SQL_WASM = join('node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+if (existsSync(SQL_WASM)) {
+  copyFileSync(SQL_WASM, join(DIST, 'sql-wasm.wasm'));
+} else {
+  console.error('[inject-pwa] sql.js wasm missing — the web database cannot start');
+  process.exit(1);
+}
+
 // ── service worker ──────────────────────────────────────────────────────────
 
 if (existsSync(join('public', 'sw.js'))) {
@@ -169,24 +181,14 @@ userAgent: ' + navigator.userAgent;
       })();
     </script>
     <script>
-      // The worker supplies the cross-origin isolation headers expo-sqlite's
-      // SharedArrayBuffer worker channel needs. The first load happens before
-      // the worker controls the page, so reload once — guarded, so it cannot
-      // loop.
-      (function () {
-        if (!('serviceWorker' in navigator)) return;
-
-        navigator.serviceWorker.register('${BASE}/sw.js').then(function (reg) {
-          if (self.crossOriginIsolated) return;
-          if (navigator.serviceWorker.controller) return;
-          if (sessionStorage.getItem('sc-iso-reload') === '1') return;
-
-          sessionStorage.setItem('sc-iso-reload', '1');
-          (reg.active ? Promise.resolve() : navigator.serviceWorker.ready).then(function () {
-            window.location.reload();
-          });
-        }).catch(function () {});
-      })();
+      // Registered purely so browsers offer "Install app". No reload dance:
+      // the web build uses sql.js, which needs no cross-origin isolation, so
+      // there is nothing the worker has to be controlling for.
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('${BASE}/sw.js').catch(function () {});
+        });
+      }
     </script>
 `;
 
