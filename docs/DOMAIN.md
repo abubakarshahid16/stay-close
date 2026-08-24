@@ -24,12 +24,34 @@ This document defines *behaviour*, not storage layout or UI. Schema lives in
 
 ### 1.1 ContactReference
 
-Holds: native contact identifier, the phone number selected for communication, and a
-locally cached display name used only as a fallback when the native record cannot be read.
+Holds:
+
+| Field | Role |
+|---|---|
+| `nativeId` | Platform contact identifier — fast-path lookup. **Not durable.** |
+| `phoneE164` | Normalised international number — **the durable identity anchor** |
+| `displayNameCache` | Fallback label, and a secondary match signal |
 
 The **native address book is the source of truth** for identity and phone numbers. The app
 must not duplicate the address book. Display name and numbers are resolved from the native
 record at read time; the cached name is a degradation path, not the truth.
+
+**The native identifier is not a durable primary key.** Verified in `docs/PLATFORM.md` §1.3:
+Android may change a contact's `_ID` on aggregation or account sync, and iOS
+`CNContact.identifier` is device-local and not preserved across backup/restore or CardDAV
+sync. Identifier churn is therefore an expected condition, not an error.
+
+Resolution order, which makes churn self-healing:
+
+```text
+1. look up by nativeId
+2. on miss → re-resolve by phoneE164
+3. on match → repair nativeId in place, continue normally
+4. on failure → mark unavailable (history preserved)
+```
+
+Editing a contact, rebooting, and reinstalling on Android do **not** churn identifiers.
+Merges, account syncs, device migration, and restore-from-backup do.
 
 An `availability` state distinguishes:
 
@@ -57,7 +79,23 @@ deletes history.
 
 ### 2.1 Permission states
 
-Handled explicitly: `granted`, `denied`, `restricted`, `revoked-after-grant`, `unavailable`.
+Handled explicitly: `granted`, **`limited`**, `denied`, `restricted`, `revoked-after-grant`,
+`unavailable`.
+
+**`limited` is a distinct first-class state, not a variant of `granted`.** Verified in
+`docs/PLATFORM.md` §1.2: on iOS 18+ the platform reports `status: 'granted'` while exposing
+only a user-selected subset of the address book — silently, with no error. Treating it as full
+access would make the app appear to lose contacts.
+
+Rules for `limited`:
+
+- The app must not assume an absent contact was deleted; it may simply be unshared.
+- A member whose contact is unshared resolves as `unavailable` and is excluded from selection,
+  but its history and Membership are preserved untouched.
+- The user must be able to grant access to more contacts without losing existing data.
+
+On iOS, `restricted` is not distinguishable from `denied` at the API level; a terminal state is
+inferred from `canAskAgain === false`.
 
 On loss of Contacts permission the app must: keep all history, keep all Groups and Schedules,
 mark contacts `unavailable` for resolution purposes, fail contact operations gracefully, and
