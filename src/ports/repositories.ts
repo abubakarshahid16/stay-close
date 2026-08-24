@@ -174,6 +174,13 @@ export interface ReminderRepository {
   findByContact(contactReferenceId: ContactReferenceId): Promise<ReminderInstance[]>;
   findByGroup(groupId: GroupId): Promise<ReminderInstance[]>;
 
+  /**
+   * Every reminder ever created, including resolved ones.
+   * Metrics are derived from full history rather than stored counters
+   * (docs/DOMAIN.md §15), so this is the input to that derivation.
+   */
+  findAll(): Promise<ReminderInstance[]>;
+
   resolve(
     id: ReminderId,
     state: Exclude<ReminderState, 'pending'>,
@@ -209,6 +216,9 @@ export interface ContactEventRepository {
   findById(id: ContactEventId): Promise<ContactEvent | null>;
   record(input: NewContactEvent, now: Instant): Promise<ContactEvent>;
   findByContact(contactReferenceId: ContactReferenceId): Promise<ContactEvent[]>;
+
+  /** Every contact event ever recorded. Input to derived metrics. */
+  findAll(): Promise<ContactEvent[]>;
 
   /** Most recent contact for a person, globally. Null means never contacted. */
   lastContactedAt(contactReferenceId: ContactReferenceId): Promise<Instant | null>;

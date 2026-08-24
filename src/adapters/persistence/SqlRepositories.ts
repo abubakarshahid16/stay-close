@@ -638,6 +638,13 @@ export class SqlReminderRepository implements ReminderRepository {
     return rows.map(mapReminder);
   }
 
+  async findAll(): Promise<ReminderInstance[]> {
+    const rows = await this.db.all<ReminderRow>(
+      'SELECT * FROM reminder_instances ORDER BY occurrence_at ASC, id ASC'
+    );
+    return rows.map(mapReminder);
+  }
+
   async resolve(
     id: ReminderId,
     state: Exclude<ReminderState, 'pending'>,
@@ -722,6 +729,13 @@ export class SqlContactEventRepository implements ContactEventRepository {
     const rows = await this.db.all<EventRow>(
       'SELECT * FROM contact_events WHERE contact_reference_id = ? ORDER BY occurred_at DESC',
       [id]
+    );
+    return rows.map(mapEvent);
+  }
+
+  async findAll(): Promise<ContactEvent[]> {
+    const rows = await this.db.all<EventRow>(
+      'SELECT * FROM contact_events ORDER BY occurred_at ASC, id ASC'
     );
     return rows.map(mapEvent);
   }
