@@ -48,7 +48,8 @@
         {
           "contactsPermission": "Stay Close uses your contacts so you can choose the people you want to stay connected with. Your contacts never leave your device."
         }
-      ]
+      ],
+      "./plugins/withReadOnlyContacts"
     ],
     "experiments": {
       "typedRoutes": true
