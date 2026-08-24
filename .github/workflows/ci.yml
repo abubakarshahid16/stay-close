@@ -42,3 +42,20 @@ jobs:
 
       - name: Test
         run: npm run test:all -- --ci
+
+      # Catches native-bundle breakage without an Android SDK or a 20-minute
+      # APK build.
+      #
+      # This is here because a real bug reached seven released tags unseen:
+      # AppContext imported the web SQLite driver alongside the native one and
+      # chose between them with Platform.OS, which pulled sql.js — and its
+      # `require("node:fs")` — into the Android dependency graph. Metro cannot
+      # resolve node:fs for a native target, so the Android bundle could not be
+      # built at all.
+      #
+      # Nothing caught it. Unit tests do not bundle, the web build resolves
+      # sql.js perfectly well, and the APK workflow was building the debug
+      # variant, which skips JS bundling entirely. The first build that
+      # actually bundled for Android was the first one to fail.
+      - name: Bundle for Android
+        run: npm run bundle:android

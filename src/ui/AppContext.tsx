@@ -12,9 +12,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { Platform } from 'react-native';
 import * as Localization from 'expo-localization';
 import { createContainer, type Container } from '../container';
-import type { SqlDriver } from '../ports/SqlDriver';
-import { ExpoSqlDriver } from '../adapters/persistence/ExpoSqlDriver';
-import { SqlJsDriver } from '../adapters/persistence/SqlJsDriver';
+import { openPlatformDriver } from '../adapters/persistence/openPlatformDriver';
 import { prepareDatabase, type DatabaseStatus } from '../adapters/persistence/prepareDatabase';
 import { ExpoContactProvider } from '../adapters/contacts/ExpoContactProvider';
 import { ExpoNotificationScheduler } from '../adapters/notifications/ExpoNotificationScheduler';
@@ -145,14 +143,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       setBoot({ phase: 'loading' });
       try {
-        // Web uses sql.js rather than expo-sqlite. expo-sqlite's web build
-        // needs SharedArrayBuffer and therefore cross-origin isolation, which a
-        // static host cannot provide reliably; sql.js needs neither.
-        // Timed either way: a hung open must surface as an error, not an
-        // endless spinner.
-        const openDriver: Promise<SqlDriver> =
-          Platform.OS === 'web' ? SqlJsDriver.open() : ExpoSqlDriver.open();
-        const db = await withTimeout(openDriver, BOOT_TIMEOUT_MS);
+        // Which engine this is depends on the platform, and that choice is
+        // made by module resolution rather than here — see
+        // adapters/persistence/openPlatformDriver.ts. Timed either way: a hung
+        // open must surface as an error, not an endless spinner.
+        const db = await withTimeout(openPlatformDriver(), BOOT_TIMEOUT_MS);
         const status = await withTimeout(prepareDatabase(db), BOOT_TIMEOUT_MS);
         if (cancelled) return;
 

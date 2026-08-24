@@ -18,7 +18,8 @@
     "e2e:web": "node scripts/e2e-web.mjs",
     "verify:web": "npm run build:web && npm run smoke:web && npm run e2e:web && npm run check:ios-web",
     "icons": "node scripts/generate-icons.mjs",
-    "check:ios-web": "node scripts/ios-web-check.mjs"
+    "check:ios-web": "node scripts/ios-web-check.mjs",
+    "bundle:android": "node scripts/bundle-android.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "^57.0.13",
