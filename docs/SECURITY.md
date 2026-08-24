@@ -1,234 +1,222 @@
-# Security
+# Security & Privacy Audit
 
-## Security Philosophy
+> **Issues:** `047` (#58) dependency and network-independence audits, `048` (#59) permission audit,
+> `049` (#60) local data protection and threat model.
+> **Audited:** commit on `feat/functional-v1`, Expo SDK 57, React Native 0.86.
+> **Scope:** static audit of the repository and dependency tree. The on-device half —
+> airplane-mode operation and traffic inspection — is specified in
+> `docs/DEVICE_VERIFICATION.md` §8 and has **not** been run.
 
-Stay Close's security posture is shaped by its architecture: a local-only application with no network communications and no backend server. The primary attack surfaces are the local database, backup files, third-party dependencies, and input validation. The application has no authentication layer to protect because there is no account system.
-
-Security requirements are reviewed during Phase 10 (Security & Privacy Hardening) and re-checked for every PR that touches data handling, permissions, or dependencies.
-
----
-
-## Attack Surface
-
-### In Scope
-
-| Surface | Risk | Mitigation |
-|---|---|---|
-| SQLite database | SQL injection via malformed input | Parameterised queries always |
-| Backup file import | Malicious JSON payload | Schema validation before processing |
-| Contact data | Exposure via logs or screenshots | No PII in logs; fake data in screenshots |
-| Third-party dependencies | Malicious or compromised packages | Dependency evaluation before install |
-| Input fields | Oversized or malformed input | Input length limits and sanitisation |
-| Temporary files | Sensitive data in temp storage | Minimise temp file use; clean up |
-
-### Out of Scope
-
-Because Stay Close makes no network requests:
-
-- No API authentication vulnerabilities
-- No token leakage via network
-- No man-in-the-middle attacks
-- No server-side injection attacks
-- No cloud database exposure
-- No account takeover
+Findings are marked **[verified]** where a command or test proves them, and
+**[unverified]** where they still require a device or a release build.
 
 ---
 
-## SQL Injection Prevention
+## 1. Summary
 
-All database operations use parameterised queries. Untrusted values are never concatenated directly into SQL strings.
-
-**Correct approach (always)**:
-```typescript
-db.runAsync(
-  'INSERT INTO circles (name) VALUES (?)',
-  [userInput]
-);
-```
-
-**Prohibited approach (never)**:
-```typescript
-db.runAsync(`INSERT INTO circles (name) VALUES ('${userInput}')`);
-```
-
-Every repository function must use parameterised queries. This is reviewed in every PR touching database code and verified by tests that attempt SQL-injection strings as input values.
-
----
-
-## Input Validation
-
-All user-supplied input is validated before being written to the database:
-
-| Field | Validation |
+| Audit | Result |
 |---|---|
-| Circle name | Required, max 100 characters, trimmed |
-| Contact display name | Read from OS — validated as non-empty string before storing |
-| Phone number | Read from OS — stored as-is but length-limited |
-| Reminder frequency | Enum — only allowed values accepted |
-| Backup file | Schema version checked; required fields validated; size limited |
+| Network calls in our source | **None** [verified — automated test] |
+| HTTP client dependencies | **None** [verified] |
+| Analytics / crash / attribution SDKs | **None** [verified] |
+| Backend or auth clients | **None** [verified] |
+| Android permissions requested | **3, each justified** [verified in config; unverified in a release build] |
+| Unwanted permissions from transitive plugins | **Found and stripped** [verified] |
+| Local data encrypted by the app | **No — and we do not claim otherwise** (§5) |
 
-Input validation is implemented in a centralised `validation.ts` module — not duplicated in each repository or service.
-
----
-
-## Backup File Security
-
-Backup files are JSON documents that the user imports. A malicious or corrupted file must never:
-
-- Crash the application
-- Corrupt existing valid data
-- Execute arbitrary code
-- Write unexpected values to the database
-
-Validation steps before any import:
-1. File size check — reject files above a defined maximum size
-2. JSON parse — in a try/catch; reject on parse failure
-3. Schema version check — reject unsupported or missing schema version
-4. Required field validation — verify all required fields are present and of expected types
-5. Data type validation — verify every value matches its expected type before writing
-6. Import runs inside a single SQLite transaction — if any step fails, the entire import is rolled back and existing data is preserved
+One real finding, in §3. Everything else came back clean.
 
 ---
 
-## Dependency Security
+## 2. Network independence — issue 047
 
-### Pre-Install Checklist
+### 2.1 Our own source
 
-Before adding any dependency:
+**[verified]** `__tests__/adapters/networkIndependence.test.ts` scans every file in `src/`,
+`app/` and `plugins/` on each CI run for `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`,
+`sendBeacon`, `axios`, `node:http`/`https`, and the Expo push-token APIs. Zero matches.
 
-1. Check npm audit for known vulnerabilities
-2. Verify the package is actively maintained
-3. Read the package source or summary for network calls
-4. Check if it requires additional OS permissions
-5. Verify it does not include analytics or telemetry
-6. Document the decision in docs/DECISIONS/ if significant
+It is a **source scan, not a runtime interception**, on purpose: a runtime test only catches
+paths a test happens to execute, whereas the claim being made is about the mere presence of a
+network call anywhere in the app.
 
-### Ongoing Audits
+The test also guards itself — it asserts it scanned a non-trivial number of files (so a broken
+directory walk cannot pass vacuously), asserts a planted `fetch(` *is* detected, and asserts a
+comment mentioning `fetch` is *not*.
 
-- `npm audit` runs as part of CI on every PR
-- Dependency review is conducted during Phase 10
-- Dependencies with unresolved high/critical vulnerabilities block release
+### 2.2 Outbound URLs
+
+**[verified]** Exactly one remote URL appears anywhere in our source: `https://wa.me/`. That is
+a deep link handed to the operating system, not a request this app makes — the user is leaving
+Stay Close (`docs/DOMAIN.md` §12). Asserted by test; any new host fails the build.
+
+### 2.3 Dependencies
+
+**[verified]** Fifteen direct runtime dependencies, all `expo-*`, `react`, `react-native` or
+`react-native-*`. The tree was checked for the common analytics, crash-reporting and attribution
+packages (Segment, Amplitude, Mixpanel, Sentry, Bugsnag, Firebase, PostHog, AppsFlyer, Branch,
+Datadog) — **none present at any depth**. Guarded by test so a future `npm install` cannot
+introduce one quietly.
+
+### 2.4 What this audit cannot establish
+
+**[unverified]** A static audit cannot prove a *dependency* makes no request of its own. Only
+on-device traffic inspection can, and that is specified in `docs/DEVICE_VERIFICATION.md` §8.
+
+Two known non-issues, stated so they are not mistaken for findings later:
+
+- `expo-notifications` contains push-notification code. We never call it — no push-token API
+  appears in our source, and no FCM or APNs configuration exists. Local notifications require
+  no network.
+- Expo's CLI has its own telemetry. That is build-time tooling, not shipped app code, and it is
+  disabled in CI via `EXPO_NO_TELEMETRY=1`.
 
 ---
 
-## Sensitive Data in Logs
+## 3. Permission audit — issue 048
 
-Production builds must not emit:
+### 3.1 The finding
 
-- Contact names
-- Phone numbers
-- Contact identifiers
-- Circle membership details
-- Notification content containing names
+**[verified]** `expo-file-system` is a **transitive** dependency of `expo` itself. We never
+added it and never use it. Its config plugin adds three permissions:
 
-Logging strategy:
-
-```typescript
-// Production log — acceptable
-logger.info('Reminder selection completed');
-
-// Debug log — acceptable in development builds only
-logger.debug('Selected person from circle', { circleId, personId });
-
-// Never acceptable in any build
-logger.info('Selected Ahmed Khan for circle Family');
+```
+android.permission.INTERNET
+android.permission.READ_EXTERNAL_STORAGE
+android.permission.WRITE_EXTERNAL_STORAGE
 ```
 
-A logging utility wraps all output and strips PII fields in production mode. Tests verify that no PII appears in log output for key operations.
+Separately, `expo-contacts`' own plugin adds `WRITE_CONTACTS` unconditionally, although this app
+only ever reads.
+
+None of the four is justified. Left alone, a release build would have requested `INTERNET` for
+an app that makes no network requests, plus two storage permissions and a contacts-write
+permission that Play Store review treats as sensitive.
+
+### 3.2 The fix, and why it is an allowlist
+
+`plugins/withMinimalPermissions.js` strips every Android permission **not** explicitly
+justified, and runs last in `app.json` so it sees every other plugin's output.
+
+This replaced an earlier blocklist that stripped only `WRITE_CONTACTS`. A blocklist is the wrong
+shape: it must name each unwanted permission in advance, and this finding is precisely the case
+it would miss — a package we did not choose, adding permissions we did not anticipate. With an
+allowlist, anything new from anywhere in the tree is removed by default and has to be argued for.
+
+The allowlist, with the justification each entry carries in code:
+
+| Permission | Justification |
+|---|---|
+| `READ_CONTACTS` | The native address book is the source of truth for who the user knows. |
+| `POST_NOTIFICATIONS` | Local reminders must be deliverable when the app is closed. |
+| `RECEIVE_BOOT_COMPLETED` | Re-register scheduled local notifications after a reboot. |
+
+**[verified]** 22 tests cover this, including that an invented
+`SOME_FUTURE_PERMISSION_WE_HAVE_NEVER_SEEN` is stripped — the property a blocklist could not
+provide.
+
+### 3.3 Deliberately not requested
+
+| Permission | Why not |
+|---|---|
+| `INTERNET` | The app makes no network requests (§2). An app that *cannot* reach the network is a real privacy property, not a technicality. |
+| `CALL_PHONE` | Only needed to place a call with no user action. We open the dialer prefilled and the user presses call, which is also required by `docs/DOMAIN.md` §9. |
+| `SCHEDULE_EXACT_ALARM` | Restricted, and reminder delivery is not safety-critical. A few minutes of drift is acceptable. |
+| `WRITE_CONTACTS` | We only read. Play Store treats it as sensitive. |
+| `READ_/WRITE_EXTERNAL_STORAGE` | No file import or export exists in V1. |
+| Location, Camera, Microphone, Photos, Bluetooth, Calendar, Accounts | No feature requires them. |
+
+### 3.4 iOS
+
+**[verified in config]** One usage description only: `NSContactsUsageDescription`. Notification
+permission is requested at runtime with no Info.plist entry needed. `LSApplicationQueriesSchemes`
+is deliberately absent — using `https://wa.me/` instead of `whatsapp://` removes the need
+(`docs/PLATFORM.md` §5.2).
+
+### 3.5 Still to verify
+
+**[unverified]** That the strip actually applied to a real build. The test covers the plugin's
+transform, not the native output. `docs/DEVICE_VERIFICATION.md` §1 has the one-line
+`grep` on the generated `AndroidManifest.xml`, and treats a surviving `WRITE_CONTACTS` or
+`INTERNET` as a **release blocker**.
 
 ---
 
-## Screenshot and Development Security
+## 4. What data exists, and where
 
-- GitHub screenshots must use only fake demo data
-- No real contacts, names, or phone numbers may appear in any committed screenshot
-- Demo dataset is defined and reused consistently: Alex Example, Jamie Example, Taylor Example, Jordan Example, Sam Example
+All of it is local. There is no server, no account, and no sync.
 
-Any accidental commit of real personal data is treated as a security incident:
-1. Rewrite git history to remove the data
-2. Document the incident
-3. Notify affected parties if necessary
-
----
-
-## Local Database Security
-
-- SQLite database lives in the application's private storage directory
-- On iOS: not accessible to other apps without device jailbreak
-- On Android: not accessible to other apps without device root (API 26+ enforced)
-- The database is not encrypted in v1.0 — a future ADR can address this if needed
-- Database backups created by the OS (iCloud backup, Android backup) may include the SQLite file — the user is informed of this in the Privacy documentation
-
-### Future Consideration: Database Encryption
-
-SQLite encryption (via SQLCipher or similar) was evaluated. For v1.0 we do not include it because:
-- The OS already provides app-sandbox isolation
-- Encryption requires a key — where to store the key securely is non-trivial
-- Adding a native SQLite extension increases complexity and dependency risk
-
-If encryption is added in a future release, it will be implemented as a separate ADR.
-
----
-
-## Permission Hygiene
-
-### What We Request
-
-| Permission | Platform | Reason |
+| Data | Where | Notes |
 |---|---|---|
-| READ_CONTACTS | Android | Contact selection |
-| Contacts | iOS | Contact selection |
-| POST_NOTIFICATIONS | Android 13+ | Local notification scheduling |
-| Notifications | iOS | Local notification scheduling |
-| RECEIVE_BOOT_COMPLETED | Android | Reschedule notifications after device restart |
+| Contact references | app SQLite database | A phone number, a cached display name, and a platform id. **Not** a copy of the address book. |
+| Groups, memberships, schedules | app SQLite database | User-created structure. |
+| Reminder history | app SQLite database | What the app asked. |
+| Contact history | app SQLite database | What the user confirmed. |
+| App settings | app SQLite database | Key/value. |
 
-### What We Never Request
+The database lives in the app's private container — `Documents` on iOS, internal app storage on
+Android. Nothing is written to shared or external storage.
 
-- WRITE_CONTACTS
-- READ_CALL_LOG
-- READ_SMS
-- ACCESS_FINE_LOCATION
-- ACCESS_COARSE_LOCATION
-- CAMERA
-- MICROPHONE
-- INTERNET (Android manifest level — enforced)
+**Notification content deliberately excludes the person's name** (`docs/PRODUCT.md` §5). A lock
+screen is visible to anyone holding the phone, so naming someone there would leak exactly what
+this app promises to keep on-device. Asserted by test.
 
 ---
 
-## Secrets Management
+## 5. Local data protection — issue 049, stated honestly
 
-- No API keys
-- No server credentials
-- No OAuth client secrets
-- No backend URLs
+**The app does not encrypt its own database.** Saying otherwise would be false, and issue 049
+explicitly forbids claiming encryption that does not exist.
 
-There are no secrets to manage because there is no backend.
+What actually protects the data:
 
-Development-time secrets (e.g., if a future CI integration requires a token) are stored in GitHub Actions Secrets, never committed to the repository.
+| Protection | Reality |
+|---|---|
+| OS app sandboxing | The database is in the app's private container; other apps cannot read it. |
+| Full-disk encryption | iOS encrypts by default. Android has since 6.0, generally enforced from 10. This protects data **at rest on a locked device**, not from a running attacker. |
+| App-level encryption | **None.** No SQLCipher, no key management. |
 
-`.gitignore` includes:
-```
-.env
-.env.local
-.env.production
-*.key
-*.pem
-```
+What that means concretely:
 
----
+- A stolen, locked, up-to-date device: data is protected by platform disk encryption.
+- A rooted or jailbroken device, or one with an unlocked bootloader: **the database is readable.**
+- A full device backup where the platform includes app data: relationship history may be present
+  in that backup.
 
-## Security Review Process
-
-Security review occurs:
-
-1. **Phase 10** — Full security audit of the complete product
-2. **Every PR** — PR template includes Security Impact field
-3. **Pre-Release** — Security checklist in RELEASE.md
-
-Security findings are documented as GitHub issues with the `security` label. Critical findings block release.
+Why not add SQLCipher: it requires a key, and with no account there is nowhere to keep one that
+is both durable and not stored beside the data it protects. A key in the same sandbox adds
+obfuscation, not security, while adding a native dependency and a whole class of
+"database will not open" failure. The honest trade is to rely on platform protection and say so.
+This is worth revisiting only if the threat model changes to include a rooted device.
 
 ---
 
-## Threat Model Reference
+## 6. Log hygiene
 
-See [THREAT_MODEL.md](THREAT_MODEL.md) for the full threat analysis including threat actors, threat scenarios, and mitigations.
+**[verified]** `no-console` is enabled as a lint rule (`warn`, allowing `warn`/`error`). The
+domain error type carries only a code and a short detail string, and `DomainError.detail` is
+documented as never containing a phone number or contact name.
+
+**[unverified]** That no third-party library logs contact data in a release build. Checking this
+requires a device log capture — added to the verification list.
+
+---
+
+## 7. Reporting a vulnerability
+
+This is a local-only app with no server, so there is no service to attack and no user data for
+us to lose — we hold none. If you find a way for contact or relationship data to leave the
+device, please open an issue describing the path. That would be the most serious class of bug
+this project can have.
+
+---
+
+## 8. Re-audit triggers
+
+Re-run this audit when any of the following happens:
+
+1. A new runtime dependency is added — especially a transitive one, which is how §3 arose.
+2. A permission is added to `plugins/withMinimalPermissions.js`.
+3. Any file-import, export, backup or sharing feature is proposed.
+4. Expo SDK is upgraded, since bundled plugins change what they add.
+5. Before any store submission.

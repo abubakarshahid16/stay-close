@@ -2,7 +2,10 @@
   "expo": {
     "name": "Stay Close",
     "slug": "stay-close",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -49,7 +52,7 @@
           "contactsPermission": "Stay Close uses your contacts so you can choose the people you want to stay connected with. Your contacts never leave your device."
         }
       ],
-      "./plugins/withReadOnlyContacts"
+      "./plugins/withMinimalPermissions"
     ],
     "experiments": {
       "typedRoutes": true
