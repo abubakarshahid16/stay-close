@@ -83,6 +83,36 @@ function render(size, scale, bg) {
 const WHITE = [255, 255, 255, 255];
 const CLEAR = [0, 0, 0, 0];
 
+/**
+ * Android draws a notification icon from its ALPHA CHANNEL ONLY: every opaque
+ * pixel is painted a flat white, whatever colour it was. A normal logo
+ * therefore shows up as a solid white blob.
+ *
+ * The source art is a white heart on a coloured gradient, so the heart can be
+ * recovered as a silhouette by treating "how white is this pixel" as coverage.
+ * Corners of the rounded square are already transparent and stay that way.
+ */
+function renderNotificationIcon(size) {
+  const png = new PNG({ width: size, height: size });
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      const [r, g, b, a] = sample(source, (x * source.width) / size, (y * source.height) / size);
+
+      // Whiteness of the source pixel, gated by its own opacity.
+      const whiteness = Math.min(r, g, b) / 255;
+      const coverage = Math.max(0, (whiteness - 0.55) / 0.45) * (a / 255);
+
+      png.data[i] = 255;
+      png.data[i + 1] = 255;
+      png.data[i + 2] = 255;
+      png.data[i + 3] = Math.round(Math.min(1, coverage) * 255);
+    }
+  }
+  return PNG.sync.write(png);
+}
+
 const OUTPUTS = [
   // Native app icon. Flattened onto white because iOS rejects alpha.
   ['assets/icon.png', 1024, 1.0, WHITE],
@@ -100,5 +130,8 @@ for (const [path, size, scale, bg] of OUTPUTS) {
   writeFileSync(path, render(size, scale, bg));
   console.log(`[icons] ${path}  ${size}x${size}`);
 }
+
+writeFileSync('assets/notification-icon.png', renderNotificationIcon(96));
+console.log('[icons] assets/notification-icon.png  96x96  (alpha silhouette)');
 
 console.log(`[icons] generated from ${SOURCE} (${source.width}x${source.height})`);
