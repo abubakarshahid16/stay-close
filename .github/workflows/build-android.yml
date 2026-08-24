@@ -116,6 +116,9 @@ jobs:
         with:
           files: ${{ steps.name.outputs.apk }}
           name: Stay Close ${{ github.ref_name }}
+          # Anything with a hyphen (alpha/beta/rc) is a pre-release. Nothing here
+          # has been verified on real hardware yet, so that is accurate.
+          prerelease: ${{ contains(github.ref_name, '-') }}
           body: |
             ## Install on Android
 
