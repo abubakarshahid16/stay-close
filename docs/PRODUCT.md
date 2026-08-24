@@ -1,326 +1,267 @@
-# Product Definition
+# Stay Close — V1 Functional Specification
 
-## Problem
-
-**People forget to reconnect with people they care about.**
-
-People have family members, cousins, relatives, friends, old friends, colleagues, classmates, and other important people in their lives. They genuinely care about these people. But life becomes busy. They forget to call. They forget to send a message. They think: "I should contact them sometime." Then weeks or months pass. Relationships slowly weaken — not necessarily because people stopped caring, but because they simply forgot to reconnect.
-
-## Solution
-
-**A private, local-first mobile app that intelligently reminds users which person they should reconnect with.**
-
-Stay Close privately uses the user's existing contacts. The user creates relationship circles such as Family, Close Friends, Old Colleagues. The user selects people from their device contacts and adds them to those circles. The user chooses how frequently the app should remind them. The application then intelligently and fairly chooses a person from that circle and reminds the user:
-
-> Reach out to Ahmed today.
-
-The app does not become the place where communication happens. The user calls, texts, WhatsApps, or communicates however they normally do. Stay Close only solves: **remember who to reconnect with.**
+> **Status:** canonical. This document supersedes the previous "Circles" product definition.
+> **Scope:** Phase A (functional). No visual design decisions appear here.
+> **Issue:** `001 [Docs] Document V1 functional specification` (#12)
 
 ---
 
-## Core Product Rule
+## 1. Purpose
 
-Every product decision must answer:
+People have family, relatives, close friends, old friends, mentors, and former colleagues
+they genuinely care about. Life gets busy. Weeks pass, then months. The relationship weakens
+— not because anyone stopped caring, but because nobody remembered to reach out.
+
+Stay Close is a **private, offline relationship-maintenance assistant**. It helps a user
+intentionally stay connected with people they care about by deciding *who to reach out to
+next* and reminding them at a time they chose.
+
+The app is not where communication happens. The user calls or messages however they normally
+would. Stay Close solves exactly one problem: **remembering who to reconnect with, fairly.**
+
+### Core product rule
+
+Every proposed feature must answer:
 
 > Does this directly help the user remember and reconnect with someone they care about?
 
-If the answer is NO, do not build it.
+If the answer is no, it is not built.
 
 ---
 
-## User Journey
+## 2. What this product is and is not
 
-### First-Time Experience
+**It is not:**
 
-```
-Install App
-   ↓
-Open App
-   ↓
-Understand What It Does  (brief onboarding — 2–3 screens)
-   ↓
-Privacy Explanation for Contacts
-   ↓
-Allow Contact Access (OS permission)
-   ↓
-Create a Circle (e.g. "Family")
-   ↓
-Select People From Existing Contacts
-   ↓
-Choose Reminder Frequency (e.g. "Weekly")
-   ↓
-Privacy Explanation for Notifications
-   ↓
-Enable Reminders (OS notification permission)
-   ↓
-Done — Home Screen
-```
+- a CRM
+- a social network
+- a cloud address book
+- a messaging or communication platform
+- a server-backed reminder service
+- an analytics product
 
-### Normal Daily Use
+**It is:**
 
-```
-Local Notification Appears on Device
-        ↓
-"You have someone to reconnect with."
-(or "Maybe reach out to Ahmed today." if detailed mode enabled)
-        ↓
-User Opens App
-        ↓
-Home Screen Shows Suggested Person
-        ↓
-User Calls / Messages / Reconnects
-        ↓
-User Taps "Done"
-        ↓
-Reminder History Updated
-        ↓
-Next Reminder Scheduled
-```
-
-### Alternative Actions
-
-```
-Suggested Person → "Someone Else"
-        ↓
-App Selects Different Eligible Person
-        ↓
-New Suggestion Shown
-```
-
-```
-Suggested Person → "Call"
-        ↓
-Device Phone App Opens with Number
-        ↓
-User Completes Call Externally
-        ↓
-User Returns to App → Taps "Done"
-```
+> A private, offline relationship-maintenance assistant.
 
 ---
 
-## Product Scope
+## 3. Core workflow
 
-### What We Build
+```text
+Phone Contacts
+      ↓
+Reference selected contacts (never copy the address book)
+      ↓
+Create Groups
+      ↓
+Configure a connection Schedule per Group
+      ↓
+Scheduling + fair rotation engine
+      ↓
+Determine who is due for contact
+      ↓
+Schedule a local notification
+      ↓
+Notification delivered
+      ↓
+Reminder becomes a persistent in-app task
+      ↓
+User opens the contact
+      ↓
+User may launch Phone / WhatsApp
+      ↓
+User MANUALLY resolves the reminder
+      ↓
+Reminder history + contact history updated
+      ↓
+History feeds future fair rotation
+```
 
-1. Access device contacts privately (OS permission, local only)
-2. Let users select important people from contacts
-3. Organise selected people into named circles
-4. Set per-circle reminder frequency
-5. Intelligently select who should be suggested using a fair weighted algorithm
-6. Create local device reminders (no push notification backend)
-7. Allow the user to call, reach out, or open an action
-8. Allow Done or Someone Else responses
-9. Manage circles and selected people (add, edit, remove)
-10. Keep all data locally stored in SQLite
-11. Backup and restore local data to a file
-12. Protect notification privacy (private mode by default)
-13. Delete all application data on demand
-14. Work offline — zero internet required for core functionality
-15. Be extremely easy to use for non-technical family members
-
-### What We Explicitly Do Not Build
-
-- Social feed or activity stream
-- User profiles or accounts
-- Followers, friend requests, or in-app social features
-- In-app messaging or chat
-- AI chat or AI relationship coaching
-- Cloud sync or cloud database
-- Advertising or monetisation systems
-- Analytics or behavioral tracking
-- Relationship scores, streaks, badges, or gamification
-- Location features
-- SMS, WhatsApp, or call content reading
-- Call recording or monitoring
-- Conversation tracking or surveillance of any kind
-- Background contact syncing without explicit user action
-- Automatic contact import
+The loop closes on **manual confirmation**. Nothing in this pipeline ever infers that
+contact happened.
 
 ---
 
-## Circles
+## 4. Offline requirement
 
-Circles are user-defined groups of people the user wants to stay connected with.
+The application must be fully functional with all network connectivity disabled.
 
-Examples:
-- Family
-- Close Friends
-- Cousins
-- Old Friends
-- College Friends
-- People I Want to Stay Connected With
-- Work Colleagues
+- No backend
+- No cloud database
+- No remote API dependency
+- No network required for any core function
 
-Each circle has:
-- A user-chosen name
-- A reminder frequency (Daily, Every 3 days, Weekly, Every 2 weeks, Monthly)
-- A list of selected people from the user's device contacts
+Acceptance is physical: put a real device in airplane mode and run the entire workflow
+(issue `055`). Launching Phone or WhatsApp is exempt only insofar as *those* apps may
+themselves want connectivity — Stay Close must not.
+
+If any dependency introduces network communication, it is removed, or its necessity is
+documented explicitly with justification.
 
 ---
 
-## Reminder Frequency Options
+## 5. Privacy requirements (non-negotiable)
 
-| Option | Interval |
+Privacy is a core product requirement, not a later enhancement.
+
+The application has:
+
+- no backend, no cloud database, no server-side authentication
+- no user accounts, no login, no signup
+- no analytics SDK, no telemetry, no advertising SDK, no tracking SDK
+
+The application **never** transmits:
+
+- contacts, names, or phone numbers
+- reminder history or relationship history
+- any user-generated information
+
+All data stays on the device. See `docs/PRIVACY.md` and `docs/THREAT_MODEL.md`.
+
+### Permissions
+
+Only two permissions are expected in V1, each with a functional justification:
+
+| Permission | Justification |
 |---|---|
-| Daily | Every 1 day |
-| Every 3 days | Every 3 days |
-| Weekly | Every 7 days |
-| Every 2 weeks | Every 14 days |
-| Monthly | Approximately every 30 days |
+| Contacts (read) | The native address book is the source of truth for who the user knows and how to reach them. |
+| Notifications | Local reminders must be deliverable when the app is closed. |
 
-The user sets frequency per circle. A Family circle might be set to Weekly while Old Friends might be Monthly.
+The app must **not** request: Location, Camera, Microphone, Photos, Bluetooth, Files,
+Calendar, or Accounts. Any future permission requires a documented functional justification
+in its issue.
 
----
-
-## Home Screen Philosophy
-
-The home screen answers one question:
-
-> Who should I reach out to today?
-
-It is not a dashboard. It is not a statistics screen. It shows one person, one circle, and the relevant actions. Nothing more.
+The app must degrade gracefully — never crash — when a permission is denied, restricted, or
+revoked after the fact.
 
 ---
 
-## Contact Permission Strategy
+## 6. Phase separation
 
-### Step 1 — Privacy Explanation (Always First)
+### Phase A — Functional product (current)
 
-Before the OS permission dialog is ever triggered:
+Foundation, architecture, database, contacts, groups, scheduling, rotation, notifications,
+reminder lifecycle, contact actions, history, error handling, permissions, persistence,
+testing, privacy verification, edge cases, documentation.
 
-```
-Your Contacts Stay Private
+Screens in Phase A use **basic lists, buttons, forms, text, and navigation only**. They exist
+to exercise functionality.
 
-Stay Close uses your contacts only so you can choose
-the people you want to stay connected with.
+The goal is `it works`, explicitly **not** `it looks beautiful`.
 
-Your contacts are processed on this device.
+No issue in Phase A may concern colors, gradients, typography, iconography, animation, cards,
+shadows, illustrations, branding, decorative components, or dashboards.
 
-They are never uploaded to our servers.
+### Phase B — UI/UX (deferred)
 
-We do not have access to them.
+Information architecture, navigation design, visual hierarchy, typography, color, icons,
+animation, empty/loading/error presentation, onboarding, accessibility polish, responsive
+layout, dark mode, visual dashboards, calendar and scorecard presentation, micro-interactions.
 
-[ Continue ]
-```
-
-### Step 2 — OS Permission Request
-
-The OS permission dialog is only triggered after the user taps Continue.
-
-### Step 3 — If Permission Denied
-
-```
-Contact access is needed so you can choose the
-people you want reminders for.
-
-You can enable it anytime from Settings.
-
-[ Open Settings ]   [ Not Now ]
-```
-
-No harassment. One explanation. No repeated badgering.
-
-### Step 4 — If Permission Revoked Later
-
-Handle gracefully. Detect on app resume. Show explanation screen again with option to open Settings or continue without adding new people.
+Phase B begins only after Functional V1 is complete, tested, and privacy-audited
+(issue `058`, milestone M10). Phase B work must not be mixed into Phase A.
 
 ---
 
-## Notification Privacy Strategy
+## 7. V1 functional scope
 
-Default: **Private**
+**In scope:**
 
-Private notification:
-```
-You have someone to reconnect with.
-```
+- Reference native contacts by stable identifier
+- Multiple user-defined Groups; a contact may belong to many
+- One active Schedule per Group (data model permits more — see `docs/DOMAIN.md` §5)
+- Cadences: daily, every X days, weekly, every X weeks, monthly
+- N-people-per-cycle selection, decoupled from interval
+- Fair randomized rotation with a testable, seedable randomness abstraction
+- Local notifications, no push infrastructure
+- Persistent reminder tasks that survive a missed notification
+- Reminder resolution: Complete, Snooze, Skip this time, Deprioritize
+- Global (cross-group) contact history and last-contact tracking
+- Phone and WhatsApp launch actions
+- Data foundation sufficient to derive scorecard metrics later
 
-Optional (user-enabled):
-```
-Maybe reach out to Ahmed today.
-```
+**Out of scope for V1:**
 
-The setting is called "Notification Privacy" with two states:
-- **Private** (default) — No name appears on lock screen
-- **Show Person's Name** — Detailed notification with name
-
----
-
-## Data Retention
-
-- The user explicitly adds people to circles. We store only those selected people.
-- We store only: native contact identifier, display name, selected phone number.
-- We do not copy the entire address book.
-- Reminder history is stored locally only.
-- App settings are stored locally only.
-- The user can delete all data at any time from within Settings.
+- Accounts, backends, analytics, ads, cloud backup
+- JSON backup / restore
+- PWA / web target
+- Arbitrary date-time snooze selection
+- Complex calendar recurrence semantics
+- Visual scorecards, charts, dashboards
+- Inspecting or controlling what happens inside WhatsApp, Phone, or SMS
 
 ---
 
-## Privacy Promise
+## 8. Conflicts with the previous "Circles" product
 
-> Your relationships stay on your phone.
+The prior product on `main` was a different design. It must not be partially revived. Each
+conflict below is deliberate and load-bearing.
 
-Stay Close uses contact access only so you can choose the people you care about. Your circles, reminders, and relationship information are stored locally on your device. We do not maintain a cloud database of your contacts. We do not sell your data. We do not track your relationships. No account is required. Core functionality works offline.
+| Topic | Old "Circles" product | V1 requirement |
+|---|---|---|
+| Terminology | **Circle** | **Group** |
+| Selection algorithm | Weighted score from `last_suggested_at` × never-suggested bonus | **Fair randomized rotation** over a priority ladder — not naive random, not the old weighting |
+| Selection quantity | One suggestion at a time, globally | **N people per cycle, per Group**, N configurable |
+| Interval meaning | Frequency implied per-person cadence | Interval governs the **cycle**; it does not promise each person is contacted every interval |
+| History scope | Suggestion counters on the group member row | **Global contact history keyed to the person**, shared across all Groups |
+| Reminder actions | Done / Show someone else / Skip | **Complete / Snooze / Skip this time / Deprioritize** — "Show someone else" is removed |
+| Skip semantics | One ambiguous "Skip" | **Skip this time ≠ Deprioritize** — two distinct domain states |
+| Snooze | Absent | Predefined options only |
+| Persistence of tasks | Suggestion recomputed on screen mount | **Reminder instances are persistent records**; a missed notification never destroys the task |
+| Contact deletion | Not modelled | History preserved; contact marked unavailable, excluded from future scheduling |
+| Backup | JSON export / import via file system | **Not in V1** |
+| Web / PWA | GitHub Pages PWA target | **Not in V1** — iOS and Android only |
+| Notification content | Privacy toggle naming the person | Local notification; content policy defined in `docs/DOMAIN.md` §10 |
+| Scheduler | Recomputed on render, wrote history on every mount | **Idempotent scheduler**; running it repeatedly yields one logical reminder per occurrence |
 
-This promise must be verifiable against the actual implementation before any release.
+Specific anti-requirements, stated so they are not reintroduced by inference:
 
----
-
-## Success Definition
-
-The product succeeds when a user:
-
-1. Sets it up in under five minutes
-2. Receives a reminder
-3. Actually contacts that person because of it
-4. Feels good — not surveilled, not pressured, not gamified
-
-Success is not measured by:
-- Daily active users
-- Session length
-- Feature count
-- Push notification open rate
-
----
-
-## Non-Goals
-
-These are explicitly out of scope and will not be added without a complete product re-evaluation:
-
-- Any form of social networking
-- Any cloud-based user data
-- Any advertising business model
-- Any analytics platform integration
-- Any gamification mechanism
-- Any background contact surveillance
-- Any communication content access
+- Do **not** revive `BackupService`, JSON export/import, or `expo-document-picker` /
+  `expo-sharing` for backup purposes.
+- Do **not** revive the web/PWA build, `react-native-web`, the service worker, or the
+  GitHub Pages deploy as a V1 requirement.
+- Do **not** revive "Show someone else" as a reminder action.
+- Do **not** reuse the term *Circle* in code, schema, or documentation.
+- Do **not** carry over `suggestion_count` / `last_suggested_at` per-membership weighting.
 
 ---
 
-## Platform Targets
+## 9. Success criteria for Functional V1
 
-- **iOS**: iPhone running iOS 15+
-- **Android**: Android 8.0 (API 26)+
+Functional V1 is complete when:
 
-Both platforms must be fully supported and tested.
+1. Every M1–M9 issue is closed.
+2. The full workflow in §3 runs end-to-end on a physical iOS device and a physical Android device.
+3. The full workflow runs with networking disabled.
+4. The rotation engine passes deterministic fairness simulations.
+5. The scheduler is proven idempotent.
+6. A dependency, network-independence, and permission audit have all passed.
+7. No aesthetic work has been done.
 
 ---
 
-## Offline Commitment
+## 10. Glossary
 
-The following must work with zero network access:
+| Term | Meaning |
+|---|---|
+| **ContactReference** | A local row pointing at a native contact by its platform identifier. Not a copy of the contact. |
+| **Group** | A user-defined relationship category — Family, Close Friends, Colleagues. |
+| **Membership** | The many-to-many link between a ContactReference and a Group. |
+| **Schedule** | A Group's connection rule: how many people, how often, which day, what time. |
+| **Cycle** | One occurrence of a Schedule firing. |
+| **ReminderInstance** | A persistent record that the app asked the user to contact one person for one cycle. |
+| **ContactEvent** | A persistent record that the user confirmed contact actually happened. |
+| **Eligible** | A contact the rotation engine is permitted to select this cycle. |
+| **Pending** | A ReminderInstance that is due or overdue and not yet resolved. |
+| **Deprioritized** | A person the user has explicitly pushed down the rotation indefinitely. |
 
-- Contact selection (after permission granted)
-- Circle creation, editing, deletion
-- Adding and removing people from circles
-- Reminder calculation and scheduling
-- Reminder history
-- Local notifications
-- All settings
-- Backup export
-- Backup restore
-- Data deletion
+---
 
-Network access must never be a hidden dependency for core functionality.
+## 11. Related documents
+
+- `docs/DOMAIN.md` — entities, rules, state machines, algorithms
+- `docs/ARCHITECTURE.md` — layering, abstractions, dependency direction
+- `docs/PLATFORM.md` — verified Expo/iOS/Android capabilities and limits
+- `docs/PRIVACY.md`, `docs/THREAT_MODEL.md`, `docs/SECURITY.md`
+- `docs/TESTING.md` — test strategy
