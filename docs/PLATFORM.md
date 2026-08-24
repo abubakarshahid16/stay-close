@@ -243,6 +243,34 @@ machine. This must not become a hard requirement for running the unit test suite
 
 ---
 
+## 3.1 Intl timezone support (Hermes) — an open risk
+
+All local wall-clock arithmetic (`src/domain/schedule/timezone.ts`) is built on
+`Intl.DateTimeFormat` with an explicit `timeZone` option. This avoids bundling a tz database
+that would go stale, and it is correct in Node.
+
+**[uncertain]** Hermes has historically shipped with trimmed ICU on Android, where
+`Intl.DateTimeFormat` with a named `timeZone` could silently fall back to the device zone or
+throw. React Native 0.76+ generally enables full ICU, but this is **not verified on a device**
+for RN 0.86.
+
+Why it matters: a silent fallback would not crash. It would compute cycle times in the wrong
+zone, which surfaces as reminders firing at the wrong hour — plausible-looking and easy to
+miss.
+
+**Decision:** treat this as a launch blocker to verify, not an assumption. The check is cheap:
+
+```ts
+new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Karachi', hour: '2-digit' })
+  .format(new Date('2026-08-16T21:00:00Z'));  // must be "02" (UTC+5), not the device hour
+```
+
+If Android turns out to lack it, the fallback is `expo-localization` for the device zone plus a
+minimal offset table for the zones we can support — a meaningful scope reduction, which is
+exactly why it needs verifying early. Added to §6.
+
+---
+
 ## 4. Background execution — the constraint that shapes the architecture
 
 **This is the most important finding in this document.**
@@ -366,6 +394,7 @@ tracked by an existing issue.
 | 6 | How much does `nativeId` actually churn across an iCloud/Google sync and a restore? | `012` |
 | 7 | Does `tel:` behave as described on a real iPhone and a real Android handset? | `038` |
 | 8 | Does `wa.me` open the installed app rather than the browser on both platforms? | `039` |
+| 9 | **Does `Intl.DateTimeFormat` honour a named `timeZone` under Hermes on Android?** A silent fallback would compute every cycle time in the wrong zone without crashing. See §3.1. | `033` |
 
 ---
 
