@@ -77,13 +77,24 @@ jobs:
           tail -120 gradle-output.txt || true
           echo "::endgroup::"
 
-          # Promote the lines that actually name the problem into annotations,
-          # which are readable without repo access.
-          grep -nE "FAILURE:|What went wrong|Caused by:|error:|Could not|Execution failed|Unsupported|A problem occurred" \
-            gradle-output.txt | head -25 | while IFS= read -r LINE; do
+          # Promote the failure into annotations, which are readable without
+          # repo access. Gradle puts the reason on the lines AFTER "What went
+          # wrong:", so grepping for the marker alone reports nothing useful —
+          # capture the whole block.
+          awk '/What went wrong:/,/^\* Try:/' gradle-output.txt > reason.txt || true
+          grep -E "Caused by:|error:|Unsupported|Could not|Execution failed" gradle-output.txt \
+            | head -20 >> reason.txt || true
+
+          if [ ! -s reason.txt ]; then
+            tail -60 gradle-output.txt > reason.txt
+          fi
+
+          while IFS= read -r LINE; do
             CLEAN=$(printf '%s' "$LINE" | tr -d '\r' | cut -c1-400)
-            echo "::error::${CLEAN}"
-          done
+            if [ -n "$CLEAN" ]; then
+              echo "::error::${CLEAN}"
+            fi
+          done < <(head -40 reason.txt)
 
       - name: Upload the Gradle log
         if: failure()
