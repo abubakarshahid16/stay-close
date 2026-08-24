@@ -9,12 +9,15 @@
  * Screens read use cases from here and construct nothing themselves.
  */
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import * as Localization from 'expo-localization';
 import { createContainer, type Container } from '../container';
 import { ExpoSqlDriver } from '../adapters/persistence/ExpoSqlDriver';
 import { prepareDatabase, type DatabaseStatus } from '../adapters/persistence/prepareDatabase';
 import { ExpoContactProvider } from '../adapters/contacts/ExpoContactProvider';
 import { ExpoNotificationScheduler } from '../adapters/notifications/ExpoNotificationScheduler';
+import { WebContactProvider } from '../adapters/contacts/WebContactProvider';
+import { WebNotificationScheduler } from '../adapters/notifications/WebNotificationScheduler';
 import { LinkingCommunicationLauncher } from '../adapters/communication/LinkingCommunicationLauncher';
 import { SystemClock } from '../adapters/system/SystemClock';
 import { CryptoRandom } from '../adapters/system/CryptoRandom';
@@ -88,11 +91,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        // Web has no address-book API and no scheduled-notification API, so it
+        // gets adapters that say so rather than ones that pretend
+        // (WebContactProvider, WebNotificationScheduler).
+        const isWeb = Platform.OS === 'web';
+
         const container = createContainer({
           clock: new SystemClock(),
           random: new CryptoRandom(),
-          contacts: new ExpoContactProvider(deviceCallingCode()),
-          notifications: new ExpoNotificationScheduler(),
+          contacts: isWeb
+            ? new WebContactProvider()
+            : new ExpoContactProvider(deviceCallingCode()),
+          notifications: isWeb
+            ? new WebNotificationScheduler()
+            : new ExpoNotificationScheduler(),
           communication: new LinkingCommunicationLauncher(),
           db,
         });

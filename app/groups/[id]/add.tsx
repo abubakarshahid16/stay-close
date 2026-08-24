@@ -24,6 +24,7 @@ import {
   Screen,
   Spacer,
 } from '../../../src/ui/basics';
+import { ManualPersonForm } from '../../../src/ui/ManualPersonForm';
 import type { ContactPermissionState, ResolvedContact } from '../../../src/ports/ContactProvider';
 import { groupId as toGroupId } from '../../../src/domain/shared/ids';
 import { isErr } from '../../../src/domain/shared/Result';
@@ -102,28 +103,58 @@ export default function AddPeopleScreen() {
     }
   }
 
+  async function addManually(input: { displayName: string; phoneE164: string }) {
+    const result = await app.groups.addMember(id, { ...input, nativeId: null });
+    if (isErr(result)) return result.error.detail;
+    setAlreadyIn((previous) => new Set([...previous, input.phoneE164]));
+    return null;
+  }
+
   if (permission === null) return <Loading label="Checking contacts access" />;
 
   if (permission !== 'granted' && permission !== 'limited') {
+    // 'unavailable' means the platform has no address book at all (web). The
+    // others mean the user declined. Both must offer manual entry rather than
+    // dead-ending.
+    const noAddressBook = permission === 'unavailable';
     const terminal = permission === 'restricted' || !canAskAgain;
+
     return (
       <Screen>
-        <Heading>Stay Close needs your contacts</Heading>
-        <Body>
-          It reads your address book to let you choose who to stay in touch with. Your contacts
-          never leave this device — there is no account and no server.
-        </Body>
-        <Spacer />
-        {terminal ? (
-          <Body dim>
-            Access is turned off for Stay Close. You can change it in your device Settings under
-            this app.
+        <Heading>Add people</Heading>
+
+        {noAddressBook ? (
+          <Body>
+            This browser has no address book for Stay Close to read, so people are added by hand
+            here. On a phone you can pick them straight from your contacts.
           </Body>
         ) : (
-          <Button label="Allow contacts" variant="primary" onPress={() => void request()} />
+          <>
+            <Body>
+              Stay Close can read your address book so you can pick people from it. Your contacts
+              never leave this device — there is no account and no server.
+            </Body>
+            <Spacer />
+            {terminal ? (
+              <Body dim>
+                Contacts access is turned off for Stay Close. You can change it in your device
+                Settings, or add people by hand below.
+              </Body>
+            ) : (
+              <Button label="Allow contacts" variant="primary" onPress={() => void request()} />
+            )}
+          </>
         )}
+
         <Spacer />
-        <Button label="Back" variant="quiet" onPress={() => router.back()} />
+        <ManualPersonForm onAdd={addManually} busy={busy} />
+
+        <Spacer />
+        <Button
+          label="Done"
+          variant="quiet"
+          onPress={() => router.replace(`/groups/${params.id}`)}
+        />
       </Screen>
     );
   }

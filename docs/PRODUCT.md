@@ -185,11 +185,41 @@ Phase B begins only after Functional V1 is complete, tested, and privacy-audited
 
 - Accounts, backends, analytics, ads, cloud backup
 - JSON backup / restore
-- PWA / web target
 - Arbitrary date-time snooze selection
 - Complex calendar recurrence semantics
 - Visual scorecards, charts, dashboards
 - Inspecting or controlling what happens inside WhatsApp, Phone, or SMS
+
+---
+
+### 7.1 Web: a deliberately degraded target
+
+Web was originally **out of scope**, and this document said so. That decision has been
+**reversed by the product owner**, so it is recorded here rather than left as a contradiction
+between the spec and the code.
+
+Web is supported, but it cannot reach parity, and the reasons are platform facts rather than
+implementation gaps:
+
+| Capability | Native | Web |
+|---|---|---|
+| Pick people from the address book | Yes | **No.** Browsers have no address-book API, so people are typed in by hand |
+| Reminders while the app is closed | Yes, OS-scheduled | **No.** Browsers cannot schedule a notification that outlives the tab; that needs Web Push, which needs a server this product will not have |
+| Contact sync (name/number repair) | Yes | **No.** There is nothing to sync against |
+| Local database | SQLite | SQLite via WASM, which needs cross-origin isolation headers a service worker must supply |
+
+What still works on web: groups, schedules, the rotation engine, the full reminder lifecycle,
+history and metrics. The in-app reminder list is the system of record on every platform
+(§DOMAIN §11), so a web user sees their due reminders whenever they open the page — they simply
+are not nudged when it is closed.
+
+**The honest framing:** web is a way to try Stay Close and to use it at a desk. A phone is where
+it works as intended. The UI says so rather than implying parity.
+
+This also reintroduces two things the rebuild had removed — the web bundle and a service worker.
+Manual person entry, added for web, doubles as the fallback on a phone when someone declines
+contacts access, which is an improvement in its own right: declining a permission should not be a
+dead end.
 
 ---
 
@@ -211,7 +241,7 @@ conflict below is deliberate and load-bearing.
 | Persistence of tasks | Suggestion recomputed on screen mount | **Reminder instances are persistent records**; a missed notification never destroys the task |
 | Contact deletion | Not modelled | History preserved; contact marked unavailable, excluded from future scheduling |
 | Backup | JSON export / import via file system | **Not in V1** |
-| Web / PWA | GitHub Pages PWA target | **Not in V1** — iOS and Android only |
+| Web / PWA | GitHub Pages PWA target | **Re-included, deliberately degraded** — see §7.1 |
 | Notification content | Privacy toggle naming the person | Local notification; content policy defined in `docs/DOMAIN.md` §10 |
 | Scheduler | Recomputed on render, wrote history on every mount | **Idempotent scheduler**; running it repeatedly yields one logical reminder per occurrence |
 

@@ -4,7 +4,8 @@
     "slug": "stay-close",
     "platforms": [
       "ios",
-      "android"
+      "android",
+      "web"
     ],
     "version": "1.0.2",
     "orientation": "portrait",
@@ -55,7 +56,20 @@
       "./plugins/withMinimalPermissions"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "baseUrl": "/stay-close"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "Stay Close",
+      "shortName": "Stay Close",
+      "description": "A private, offline relationship reminder. No account, no cloud.",
+      "themeColor": "#1c1c1c",
+      "backgroundColor": "#ffffff",
+      "display": "standalone",
+      "orientation": "portrait"
     }
   }
 }

@@ -15,11 +15,32 @@ No backend. No account. No network requests. Your contacts never leave your devi
   <img src="https://img.shields.io/badge/Download%20APK-Android-brightgreen?style=for-the-badge&logo=android&logoColor=white" alt="Download the Android APK" />
 </a>
 
+&nbsp;
+<a href="https://abubakarshahid16.github.io/stay-close">
+  <img src="https://img.shields.io/badge/Open%20Web%20App-Any%20browser-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Open the web app" />
+</a>
+
 **Android:** download the `.apk` from the [latest release](https://github.com/abubakarshahid16/stay-close/releases/latest),
 open it on your phone, and allow installing from your browser once.
 
-**iOS:** not available. iPhones cannot sideload, so an iOS build needs TestFlight or the App
-Store — neither is set up.
+**Web:** open the link above in any browser. It is installable — Chrome and Edge show an
+**Install** button in the address bar; on iPhone use Safari's **Share → Add to Home Screen**.
+
+**iOS native:** not available. iPhones cannot sideload, so a native iOS build needs TestFlight or
+the App Store — neither is set up. The web app is the iPhone route for now.
+
+### Web is deliberately limited
+
+Not a rough edge — two hard browser limitations:
+
+| | Android app | Web |
+|---|---|---|
+| Pick people from your contacts | Yes | **No** — browsers have no address book, so you type people in |
+| Reminders when the app is closed | Yes | **No** — browsers cannot schedule those without a server |
+
+Groups, schedules, fair rotation, the whole reminder lifecycle and history all work on web. You
+just see your due reminders when you open the page rather than being nudged. **A phone is where it
+works as intended;** web is good for trying it and for using it at a desk.
 
 <details>
 <summary><strong>Read this before installing</strong></summary>

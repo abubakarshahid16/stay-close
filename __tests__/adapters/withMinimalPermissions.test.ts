@@ -157,9 +157,15 @@ describe('app.json wiring', () => {
     expect([...appJson.expo.android.permissions].sort()).toEqual([...JUSTIFIED].sort());
   });
 
-  // docs/PRODUCT.md §7 — web is not a V1 target, so no browser surface exists.
-  it('targets only iOS and Android', () => {
-    expect([...appJson.expo.platforms].sort()).toEqual(['android', 'ios']);
-    expect(appJson.expo.web).toBeUndefined();
+  // docs/PRODUCT.md §7.1 — web was re-included by the product owner as a
+  // deliberately degraded target. The permission allowlist is Android-only, so
+  // adding web does not widen the native permission surface; this asserts that.
+  it('targets iOS, Android and web', () => {
+    expect([...appJson.expo.platforms].sort()).toEqual(['android', 'ios', 'web']);
+    expect(appJson.expo.web).toBeDefined();
+  });
+
+  it('adding web did not widen the Android permission set', () => {
+    expect([...appJson.expo.android.permissions].sort()).toEqual([...JUSTIFIED].sort());
   });
 });

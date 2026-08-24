@@ -1,0 +1,85 @@
+name: Deploy Web App
+
+# Publishes the web build to GitHub Pages, giving browsers an installable PWA.
+#
+# The web build is a DEGRADED version by necessity, not by choice:
+#   - browsers have no address-book API, so people are added by hand
+#     (src/adapters/contacts/WebContactProvider.ts)
+#   - browsers cannot schedule a notification that survives the tab closing, so
+#     reminders arrive only while the page is open
+#     (src/adapters/notifications/WebNotificationScheduler.ts)
+#
+# The in-app reminder list is the system of record either way
+# (docs/DOMAIN.md §11), so the app is genuinely usable — just quieter.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  EXPO_NO_TELEMETRY: '1'
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Do not ship a broken build to a public URL.
+      - name: Verify the project is sound
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run test:all -- --ci
+
+      - name: Export web build
+        run: npx expo export --platform web
+        env:
+          NODE_ENV: production
+
+      # Registers the service worker and writes the manifest. Without this the
+      # browser will not offer "Install app", and expo-sqlite's WASM will not get
+      # the cross-origin isolation headers it needs.
+      - name: Add PWA assets
+        run: node scripts/inject-pwa.mjs
+
+      - name: Confirm the PWA wiring landed
+        run: |
+          for FILE in dist/index.html dist/manifest.json dist/sw.js dist/404.html; do
+            test -f "$FILE" || { echo "::error::$FILE missing"; exit 1; }
+          done
+          grep -q 'manifest.json' dist/index.html || { echo "::error::manifest not linked"; exit 1; }
+          grep -q 'serviceWorker' dist/index.html || { echo "::error::worker not registered"; exit 1; }
+          echo "PWA wiring OK"
+
+      - uses: actions/configure-pages@v4
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@v4
