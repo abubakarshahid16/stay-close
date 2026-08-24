@@ -24,7 +24,7 @@ import type { Repositories, UnitOfWork } from '../../ports/repositories';
 import type { Schedule } from '../../domain/entities';
 import { occurrencesBetween } from '../../domain/schedule/cadence';
 import { selectForCycle, type RotationCandidate } from '../../domain/rotation/rotation';
-import { instant, type ContactReferenceId, type Instant } from '../../domain/shared/ids';
+import { instant, type Instant } from '../../domain/shared/ids';
 
 export interface ScheduleRunReport {
   readonly scheduleId: number;
@@ -224,58 +224,3 @@ export class RunScheduler {
     return candidates;
   }
 }
-
-/**
- * Startup reconciliation (issue 032 / #43).
- *
- * Runs on every launch, so every step must be idempotent. Order matters:
- * contacts are synced before scheduling, or a cycle could select someone whose
- * contact has since been deleted.
- */
-export interface ReconcileOutcome {
-  readonly contactsChecked: number;
-  readonly contactsRepaired: number;
-  readonly contactsMarkedUnavailable: number;
-  readonly scheduler: SchedulerRunOutcome;
-  readonly pendingReminders: number;
-}
-
-export interface ContactSyncStep {
-  run(): Promise<{
-    checked: number;
-    repaired: number;
-    markedUnavailable: number;
-    skipped: boolean;
-  }>;
-}
-
-export class ReconcileOnStartup {
-  constructor(
-    private readonly uow: UnitOfWork,
-    private readonly sync: ContactSyncStep,
-    private readonly scheduler: RunScheduler
-  ) {}
-
-  async run(): Promise<ReconcileOutcome> {
-    // 1. Align contact references with the address book first.
-    const syncOutcome = await this.sync.run();
-
-    // 2. Generate any cycles that came due while the app was closed.
-    const schedulerOutcome = await this.scheduler.run();
-
-    // 3. Report what is now awaiting the user. Pending reminders are recovered
-    //    simply by still being in the database — a missed notification never
-    //    destroys the task (docs/DOMAIN.md §8.3).
-    const pending = await this.uow.repositories.reminders.findPending();
-
-    return {
-      contactsChecked: syncOutcome.checked,
-      contactsRepaired: syncOutcome.repaired,
-      contactsMarkedUnavailable: syncOutcome.markedUnavailable,
-      scheduler: schedulerOutcome,
-      pendingReminders: pending.length,
-    };
-  }
-}
-
-export type { ContactReferenceId };

@@ -11,7 +11,7 @@ import { FakeClock } from '../../src/testing/FakeClock';
 import { migrate } from '../../src/adapters/persistence/Database';
 import { SqlUnitOfWork } from '../../src/adapters/persistence/SqlRepositories';
 import { SeededRandom } from '../../src/adapters/system/SeededRandom';
-import { RunScheduler, ReconcileOnStartup } from '../../src/app/scheduler/RunScheduler';
+import { RunScheduler } from '../../src/app/scheduler/RunScheduler';
 import { ScheduleUseCases } from '../../src/app/schedules/ScheduleUseCases';
 import { GroupUseCases } from '../../src/app/groups/GroupUseCases';
 import { unwrap, isErr } from '../../src/domain/shared/Result';
@@ -431,59 +431,6 @@ describe('multiple groups', () => {
 
     // One reminder total, not one per group.
     expect(await h.repos.reminders.findPending()).toHaveLength(1);
-    await h.db.close();
-  });
-});
-
-describe('ReconcileOnStartup', () => {
-  it('syncs contacts, generates cycles, and reports pending work', async () => {
-    const h = await harness();
-    await givenGroupWithSchedule(h, 5, 2);
-    h.clock.set('2026-08-16T22:00:00.000Z');
-
-    const sync = {
-      run: async () => ({ checked: 5, repaired: 1, markedUnavailable: 0, skipped: false }),
-    };
-    const reconcile = new ReconcileOnStartup(h.uow, sync, h.scheduler);
-
-    const outcome = await reconcile.run();
-
-    expect(outcome.contactsChecked).toBe(5);
-    expect(outcome.contactsRepaired).toBe(1);
-    expect(outcome.scheduler.remindersCreated).toBe(2);
-    expect(outcome.pendingReminders).toBe(2);
-    await h.db.close();
-  });
-
-  // Runs on every launch, so it must be safe to repeat.
-  it('is idempotent across repeated launches', async () => {
-    const h = await harness();
-    await givenGroupWithSchedule(h, 5, 2);
-    h.clock.set('2026-08-16T22:00:00.000Z');
-
-    const sync = {
-      run: async () => ({ checked: 5, repaired: 0, markedUnavailable: 0, skipped: false }),
-    };
-    const reconcile = new ReconcileOnStartup(h.uow, sync, h.scheduler);
-
-    await reconcile.run();
-    const second = await reconcile.run();
-
-    expect(second.scheduler.remindersCreated).toBe(0);
-    expect(second.pendingReminders).toBe(2);
-    await h.db.close();
-  });
-
-  // A missed notification never destroys the task (docs/DOMAIN.md §8.3).
-  it('recovers pending reminders after a restart', async () => {
-    const h = await harness();
-    await givenGroupWithSchedule(h, 5, 2);
-    h.clock.set('2026-08-16T22:00:00.000Z');
-    await h.scheduler.run();
-
-    // A "restart" is a fresh unit of work over the same database.
-    const freshUow = new SqlUnitOfWork(h.db);
-    expect(await freshUow.repositories.reminders.findPending()).toHaveLength(2);
     await h.db.close();
   });
 });
