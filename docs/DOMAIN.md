@@ -368,11 +368,20 @@ Predefined options only. Arbitrary date-time picking is **not** in V1.
 
 | Option | Effect |
 |---|---|
-| 30 minutes | due + 30m |
-| 1 hour | due + 1h |
-| 3 hours | due + 3h |
+| 30 minutes | **now** + 30m |
+| 1 hour | **now** + 1h |
+| 3 hours | **now** + 3h |
 | Tomorrow | next local day at the Schedule's `timeOfDay` |
 | Next scheduled occurrence | the Schedule's next Cycle time |
+
+The relative options are measured from **now**, not from the reminder's original
+due time. A reminder overdue by three days would otherwise snooze to a moment
+three days in the past and re-fire immediately — the user asked to be reminded
+in 30 minutes, so that is what happens.
+
+A snooze target must always be strictly in the future. If a computed target is
+not (a stale "next occurrence" on a paused schedule, say), it is rejected rather
+than applied.
 
 Snooze reschedules the notification, modifies the existing reminder, creates **no** duplicate,
 and leaves the Group's Schedule unchanged.
