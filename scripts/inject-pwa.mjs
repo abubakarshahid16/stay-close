@@ -216,6 +216,166 @@ const injection = `
         };
       })();
     </script>
+    <style>
+      /* Install affordance. Deliberately outside React: beforeinstallprompt
+         can fire before the bundle has even parsed, and the button has to
+         survive a boot failure so someone on a broken page can still install
+         the app and try again. */
+      #sc-install {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 16px;
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        z-index: 2147483000;
+        display: none;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 14px;
+        border: 0;
+        border-radius: 999px;
+        background: #111;
+        color: #fff;
+        font: 600 15px/1.1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+        cursor: pointer;
+        white-space: nowrap;
+        max-width: calc(100vw - 32px);
+      }
+      #sc-install.sc-show { display: inline-flex; }
+      #sc-install:active { transform: translateX(-50%) scale(0.97); }
+      #sc-install-dismiss {
+        margin-left: 2px;
+        padding: 0 2px;
+        border: 0;
+        background: none;
+        color: rgba(255, 255, 255, 0.55);
+        font: 600 17px/1 sans-serif;
+        cursor: pointer;
+      }
+      #sc-ios {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483001;
+        display: none;
+        align-items: flex-end;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.45);
+      }
+      #sc-ios.sc-show { display: flex; }
+      #sc-ios-card {
+        width: 100%;
+        max-width: 460px;
+        margin: 12px;
+        margin-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        padding: 20px;
+        border-radius: 18px;
+        background: #fff;
+        color: #111;
+        font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      #sc-ios-card h2 { margin: 0 0 10px; font-size: 18px; }
+      #sc-ios-card ol { margin: 0 0 16px; padding-left: 20px; }
+      #sc-ios-card li { margin-bottom: 6px; }
+      #sc-ios-card button {
+        width: 100%;
+        padding: 12px;
+        border: 0;
+        border-radius: 12px;
+        background: #111;
+        color: #fff;
+        font: 600 15px/1 inherit;
+        cursor: pointer;
+      }
+      @media (prefers-color-scheme: dark) {
+        #sc-ios-card { background: #1c1c1e; color: #f2f2f7; }
+        #sc-ios-card button { background: #f2f2f7; color: #111; }
+      }
+    </style>
+    <script>
+      (function () {
+        var deferred = null;
+        var DISMISSED = 'sc-install-dismissed';
+
+        function el(id) { return document.getElementById(id); }
+
+        // Already installed: standalone display-mode covers Android and
+        // desktop, navigator.standalone is the iOS equivalent.
+        function installed() {
+          try {
+            if (window.matchMedia &&
+                window.matchMedia('(display-mode: standalone)').matches) return true;
+          } catch (e) {}
+          return window.navigator.standalone === true;
+        }
+
+        // iPadOS reports itself as MacIntel, hence the touch-points check.
+        function isIos() {
+          var ua = navigator.userAgent || '';
+          if (/iPad|iPhone|iPod/.test(ua)) return true;
+          return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+        }
+
+        function dismissed() {
+          try { return localStorage.getItem(DISMISSED) === '1'; } catch (e) { return false; }
+        }
+
+        function show(text) {
+          var b = el('sc-install');
+          if (!b || installed() || dismissed()) return;
+          el('sc-install-label').textContent = text;
+          b.classList.add('sc-show');
+        }
+
+        function hide() {
+          var b = el('sc-install');
+          if (b) b.classList.remove('sc-show');
+        }
+
+        // Chrome, Edge and other Chromium browsers. Suppressing the default
+        // mini-infobar is what lets the prompt be attached to a real button.
+        window.addEventListener('beforeinstallprompt', function (e) {
+          e.preventDefault();
+          deferred = e;
+          show('Install app');
+        });
+
+        window.addEventListener('appinstalled', function () {
+          deferred = null;
+          hide();
+        });
+
+        window.__scInstall = function () {
+          if (deferred) {
+            deferred.prompt();
+            deferred.userChoice.then(function (choice) {
+              if (choice && choice.outcome === 'accepted') hide();
+              deferred = null;
+            }).catch(function () {});
+            return;
+          }
+          // Safari has no install prompt at all, so the only honest thing to
+          // offer an iPhone user is the actual gesture.
+          var sheet = el('sc-ios');
+          if (sheet) sheet.classList.add('sc-show');
+        };
+
+        window.__scInstallDismiss = function (event) {
+          if (event && event.stopPropagation) event.stopPropagation();
+          try { localStorage.setItem(DISMISSED, '1'); } catch (e) {}
+          hide();
+        };
+
+        window.__scIosClose = function () {
+          var sheet = el('sc-ios');
+          if (sheet) sheet.classList.remove('sc-show');
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+          if (isIos()) show('Add to Home Screen');
+        });
+      })();
+    </script>
     <script>
       // Registered purely so browsers offer "Install app". No reload dance:
       // the web build uses sql.js, which needs no cross-origin isolation, so
@@ -247,6 +407,23 @@ if (html.includes('manifest.json')) {
       <p>Environment:</p>
       <pre id="sc-diag-env"></pre>
       <button onclick="window.__scHardReload()">Clear cache and reload</button>
+    </div>
+    <button id="sc-install" onclick="window.__scInstall()" type="button">
+      <span aria-hidden="true">⬇</span>
+      <span id="sc-install-label">Install app</span>
+      <span id="sc-install-dismiss" role="button" aria-label="Not now"
+            onclick="window.__scInstallDismiss(event)">×</span>
+    </button>
+    <div id="sc-ios" onclick="window.__scIosClose()">
+      <div id="sc-ios-card" onclick="event.stopPropagation()">
+        <h2>Add Stay Close to your Home Screen</h2>
+        <ol>
+          <li>Tap the <strong>Share</strong> button in Safari's toolbar.</li>
+          <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+          <li>Tap <strong>Add</strong>.</li>
+        </ol>
+        <button type="button" onclick="window.__scIosClose()">Got it</button>
+      </div>
     </div>
   `;
   html = html.replace('</body>', `${panel}</body>`);

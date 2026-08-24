@@ -23,13 +23,17 @@ No backend. No account. No network requests. Your contacts never leave your devi
 **Android** — open the releases page above, download the `.apk` from the newest release, and open
 it on your phone. Android asks you to allow installing from your browser; allow it once.
 
-**iPhone** — open the web app in Safari, then **Share → Add to Home Screen**. There is no native
-iOS build: Apple does not permit sideloading, so an iPhone app has to go through TestFlight or the
-App Store, and both need a paid Apple Developer account. This is a platform restriction, not
-something left undone.
+**iPhone** — open the web app in Safari and tap **Add to Home Screen** at the bottom of the page;
+it walks you through Safari's Share menu. There is no native iOS build: Apple does not permit
+sideloading, so an iPhone app has to go through TestFlight or the App Store, and both need a paid
+Apple Developer account. This is a platform restriction, not something left undone.
 
-**Desktop** — open the web app in any browser. Chrome and Edge offer an **Install** button in the
-address bar.
+**Desktop** — open the web app in any browser and use the **Install app** button at the bottom of
+the page. Chrome and Edge also show an install icon in the address bar.
+
+The button appears on its own once the browser considers the app installable, and disappears once
+it is installed. Safari never fires an install prompt at all, so on an iPhone the button shows the
+Add to Home Screen steps instead of pretending it can do it for you.
 
 ### What works where
 

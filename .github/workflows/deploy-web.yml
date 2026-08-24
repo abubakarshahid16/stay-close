@@ -88,12 +88,20 @@ jobs:
       - name: Verify the iPhone route in WebKit
         run: npm run check:ios-web
 
+      # The install button is the whole point of the web deployment for most
+      # people, and it is invisible to every other check here: the page renders
+      # identically whether or not the button works.
+      - name: Verify the install button in both engines
+        run: npm run check:install
+
       - name: Upload the WebKit screenshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-web-screenshot
-          path: ios-web-check.png
+          name: web-screenshots
+          path: |
+            ios-web-check.png
+            install-button-ios.png
           retention-days: 7
           if-no-files-found: ignore
 
