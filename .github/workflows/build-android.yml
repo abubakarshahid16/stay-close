@@ -57,9 +57,41 @@ jobs:
       - name: Generate native projects
         run: npx expo prebuild --platform android --clean
 
+      # Output is captured so a failure can be surfaced as annotations by the
+      # next step. Workflow logs need authentication to read, whereas
+      # annotations are available on a public repo — without this, a Gradle
+      # failure here is invisible to anyone without repo access, which is
+      # exactly the position this build was in.
       - name: Build APK
+        id: gradle
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee gradle-output.txt
+
+      - name: Surface the Gradle failure
+        if: failure() && steps.gradle.outcome == 'failure'
+        working-directory: android
+        run: |
+          echo "::group::Gradle output (tail)"
+          tail -120 gradle-output.txt || true
+          echo "::endgroup::"
+
+          # Promote the lines that actually name the problem into annotations,
+          # which are readable without repo access.
+          grep -nE "FAILURE:|What went wrong|Caused by:|error:|Could not|Execution failed|Unsupported|A problem occurred" \
+            gradle-output.txt | head -25 | while IFS= read -r LINE; do
+            CLEAN=$(printf '%s' "$LINE" | tr -d '\r' | cut -c1-400)
+            echo "::error::${CLEAN}"
+          done
+
+      - name: Upload the Gradle log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-log
+          path: android/gradle-output.txt
+          retention-days: 7
 
       # The permission audit's release blocker (docs/SECURITY.md section 3.5),
       # checked against the BUILT APK rather than the source manifest.
