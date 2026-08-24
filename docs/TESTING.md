@@ -1,425 +1,171 @@
-# Testing Strategy
+# Testing
 
-## Philosophy
-
-Testing is not optional. A feature is not complete because the code exists. A feature is not complete because the screen looks correct. A feature is complete only when automated tests pass and manual QA confirms the behaviour.
-
-Tests ship in the same PR as the feature. There is no "tests later" in this project.
+> **Issues:** `050` (#61), `051` (#62), `052` (#63), `053` (#64), `056` (#67)
+> **Current state:** 549 tests across 22 suites, all passing. No native build required.
 
 ---
 
-## Testing Stack
-
-| Tool | Purpose |
-|---|---|
-| Jest | Test runner |
-| React Native Testing Library | Component and integration testing |
-| expo-sqlite in-memory / test database | Real SQLite behaviour in tests |
-| jest.useFakeTimers() | Time control for scheduling tests |
-| Seeded PRNG | Deterministic reminder engine tests |
-| Custom mock for expo-contacts | Contact permission and loading tests |
-| Custom mock for expo-notifications | Notification scheduling tests |
-
----
-
-## Testing Pyramid
-
-### Level 1 — Unit Tests
-
-Target: Individual functions and classes in isolation.
-
-Location: `__tests__/unit/`
-
-Examples:
-- Reminder engine weight calculation
-- Input validation functions
-- Date utility functions
-- Backup JSON serialisation
-- Contact normalisation logic
-
-All pure business logic is unit-tested.
-
----
-
-### Level 2 — Database Tests
-
-Target: Repository classes against a real SQLite database.
-
-Location: `__tests__/db/`
-
-These tests use `expo-sqlite` with a real SQLite database in the test environment (in-memory or temp file). They do NOT use mocked databases. This is the only way to verify:
-- Schema creation
-- Migration correctness
-- Constraint enforcement
-- Cascade deletes
-- Transaction rollback
-- Parameterised query correctness
-
-Each test suite creates a fresh database. Tests are isolated from each other.
-
----
-
-### Level 3 — Component Tests
-
-Target: React Native UI components rendered with React Native Testing Library.
-
-Location: `__tests__/components/`
-
-Examples:
-- CircleCard renders circle name and frequency
-- ContactListItem renders name and selection state
-- HomeScreen shows suggestion or empty state
-- Permission explanation screen shows correct content
-- Error states render appropriate messages
-
-Tests verify actual rendered content and user interactions — not snapshots alone.
-
----
-
-### Level 4 — Integration Tests
-
-Target: Multiple layers working together.
-
-Location: `__tests__/integration/`
-
-Examples:
-- CircleService + CircleRepository + real SQLite: create circle, add people, verify persisted
-- ReminderEngine + ReminderHistoryRepository: run engine, verify history updated, run again
-- NotificationService + circle creation: verify notification is scheduled
-- Contact selection + circle save: contact flows through to database
-
-Integration tests may use real SQLite and mock OS APIs (expo-contacts, expo-notifications).
-
----
-
-### Level 5 — End-to-End Tests
-
-Target: Full user journeys through the application.
-
-Location: `__tests__/e2e/`
-
-Tool: To be confirmed — Maestro or Detox (decision captured in ADR).
-
-Key journeys to automate:
-
-**Journey 1 — First-Time Setup**
-```
-Open App → See Onboarding → Allow Contacts (mocked) →
-Create Family Circle → Select People → Choose Weekly →
-Enable Notifications → See Home Screen
-```
-
-**Journey 2 — Reminder Resolution**
-```
-Open App → See Suggested Person → Tap Done →
-History Updated → Home Returns to Waiting State
-```
-
-**Journey 3 — Someone Else**
-```
-Open App → See Suggested Person → Tap Someone Else →
-Different Person Shown → First Person Not Shown Again Immediately
-```
-
-**Journey 4 — Edit Circle**
-```
-Navigate to Circle → Remove Person →
-Return to Home → Removed Person Cannot Be Suggested
-```
-
-**Journey 5 — Backup and Restore**
-```
-Export Backup → Verify File Exists →
-Delete All Data → Restore Backup →
-Verify Circles and People Match
-```
-
----
-
-### Level 6 — Manual Device QA
-
-Location: documented in QA_CHECKLIST.md
-
-Scenarios that cannot be fully automated:
-- First installation on a real device
-- Real OS contact permission dialog
-- Real notification delivery
-- Device restart notification persistence (Android)
-- Airplane mode core functionality
-- Very large contact lists (hundreds of real contacts)
-- Accessibility with screen readers (VoiceOver / TalkBack)
-
----
-
-## Reminder Engine Tests (Detailed)
-
-The reminder engine requires extensive coverage due to its core importance.
-
-### Unit Tests
-
-```
-ReminderEngine
-  ├── returns null for empty circle
-  ├── returns the single person in a one-person circle
-  ├── never-suggested people have higher weight than recently-suggested
-  ├── applies never-suggested bonus (3×) correctly
-  ├── recency factor is 0 for person suggested today
-  ├── recency factor is 1.0 for person suggested exactly frequency-days ago
-  ├── recency factor caps at 2.0
-  ├── last-suggested person is excluded when alternatives exist
-  ├── last-suggested person is included when they are the only person
-  ├── Someone Else exclusion prevents immediate repeat within session
-  ├── malformed last_suggested_at treated as null (never suggested)
-  ├── malformed suggestion_count treated as 0
-  └── all-zero weights fallback selects uniformly
-
-WeightCalculator
-  ├── base weight is 1.0
-  ├── never-suggested bonus applies when suggestion_count === 0
-  ├── no bonus when suggestion_count > 0
-  ├── recency factor correct for each frequency
-  └── final weight is product of factors
-
-WeightedSelect
-  ├── returns null for empty array
-  ├── returns item for single-item array
-  ├── distributes selections proportionally to weights (seeded)
-  └── handles floating-point edge cases
-```
-
-### Statistical Distribution Tests (Seeded)
-
-Using a seeded PRNG, run 2,000 selections over a circle with:
-- 1 never-suggested person
-- 3 people suggested at varying recencies
-
-Verify:
-- Never-suggested person is selected at least 50% of the time in first 100 selections
-- After suggestion_count > 0, distribution normalises toward recency-based weights
-- Every person with suggestion_count > 0 is selected at least once per 500 selections
-- No person with positive eligibility is permanently starved (across 2,000 selections)
-
-These tests use fixed seeds and deterministic bounds — they never flake.
-
----
-
-## Database Tests (Detailed)
-
-```
-CircleRepository
-  ├── creates circle with valid data
-  ├── rejects empty circle name
-  ├── rejects whitespace-only circle name
-  ├── rejects name exceeding 100 characters
-  ├── rejects invalid reminder_frequency value
-  ├── reads created circle
-  ├── updates circle name
-  ├── updates reminder_frequency
-  ├── deletes circle
-  ├── cascade deletes circle_people on circle delete
-  ├── cascade deletes reminder_history on circle delete
-  └── returns null for missing ID
-
-CirclePeopleRepository
-  ├── adds person to circle
-  ├── rejects duplicate contact_identifier in same circle
-  ├── allows same contact_identifier in different circle
-  ├── removes person
-  ├── updates suggestion data
-  ├── reads people by circle ID
-  └── returns empty array for circle with no people
-
-ReminderHistoryRepository
-  ├── records shown event
-  ├── records completed event
-  ├── records skipped event
-  ├── records replaced event
-  ├── marks entry as completed
-  ├── finds recent entries by circle ID
-  └── rejects invalid action value
-
-SettingsRepository
-  ├── sets and gets value
-  ├── updates existing value
-  ├── returns null for missing key
-  └── deletes key
-
-Migrations
-  ├── v1 schema creates all tables
-  ├── v1 schema creates all indexes
-  ├── foreign keys are enforced
-  ├── migration is idempotent (applying same version twice is safe)
-  └── migration runs inside transaction — rolls back on failure
-
-Transactions
-  ├── failed transaction rolls back all changes
-  └── concurrent operations are safe
-```
-
----
-
-## Contact Tests (Detailed)
-
-```
-ContactService
-  ├── returns contacts when permission is granted
-  ├── returns permission denied state when denied
-  ├── returns restricted state when restricted (iOS)
-  ├── returns empty array when no contacts exist
-  ├── handles contact with no display name
-  ├── handles contact with no phone number
-  ├── handles contact with multiple phone numbers
-  ├── handles Unicode contact name
-  ├── handles emoji in contact name
-  ├── handles very long contact name
-  ├── refreshes contact data for stored contact
-  ├── returns not-found for deleted contact
-  └── does not log contact name in production
-
-ContactSelectionScreen
-  ├── renders list of contacts
-  ├── filters contacts by search query
-  ├── shows empty state for no search results
-  ├── selects a contact on tap
-  ├── deselects a contact on second tap
-  ├── supports multi-selection
-  ├── already-added contacts are shown as selected
-  ├── confirms selection with Add button
-  ├── shows contact count in Add button label
-  └── handles zero contacts (empty state)
-```
-
----
-
-## Notification Tests (Detailed)
-
-```
-NotificationService
-  ├── schedules notification for new circle
-  ├── reschedules when frequency changes
-  ├── cancels notification when circle deleted
-  ├── does not schedule when circle has 0 people
-  ├── uses correct interval for each frequency value
-  ├── uses circle-scoped notification identifier
-  ├── private mode notification contains no name
-  ├── detailed mode notification contains person name
-  ├── handles permission denied gracefully
-  ├── handles permission revoked gracefully
-  └── multiple circles have independent schedules
-```
-
----
-
-## Backup Tests (Detailed)
-
-```
-BackupService
-  ├── exports circles and people to JSON
-  ├── exported JSON includes schema version
-  ├── imported backup restores circles
-  ├── imported backup restores people
-  ├── imported backup restores settings
-  ├── empty backup imports without error
-  ├── rejects backup with missing schema_version
-  ├── rejects backup with unsupported schema_version
-  ├── rejects malformed JSON (parse error)
-  ├── rejects backup exceeding maximum size
-  ├── rejects backup with missing required fields
-  ├── rejects backup with wrong field types
-  ├── failed import rolls back — existing data preserved
-  ├── restore after fresh install works
-  └── duplicate identifiers in backup are handled safely
-```
-
----
-
-## Code Coverage
-
-Configure Jest to collect coverage for:
-
-- `src/services/` — target: >90%
-- `src/db/repositories/` — target: >95%
-- `src/db/migrations/` — target: 100%
-- `src/utils/` — target: >90%
-- UI components — target: >80% (lines covered by component tests)
-
-Coverage reports are generated in CI. Coverage percentage is a signal, not a goal. Do not write empty tests to inflate numbers.
-
----
-
-## Test Data Policy
-
-All test fixtures use fake placeholder contacts:
-
-```typescript
-export const FAKE_CONTACTS = {
-  alex: { id: 'fake-001', name: 'Alex Example', phone: '+1 555 000 0001' },
-  jamie: { id: 'fake-002', name: 'Jamie Example', phone: '+1 555 000 0002' },
-  taylor: { id: 'fake-003', name: 'Taylor Example', phone: '+1 555 000 0003' },
-  jordan: { id: 'fake-004', name: 'Jordan Example', phone: '+1 555 000 0004' },
-  sam: { id: 'fake-005', name: 'Sam Example', phone: '+1 555 000 0005' },
-};
-```
-
-Real contact names and phone numbers are never used in any test or fixture.
-
----
-
-## Regression Policy
-
-Every bug fix must include a regression test:
-
-```
-Bug discovered
-    ↓
-Create failing test that reproduces the bug
-    ↓
-Confirm the test fails (as expected)
-    ↓
-Fix the bug
-    ↓
-Confirm the test passes
-    ↓
-Run full test suite — confirm nothing regressed
-```
-
-Bugs fixed without regression tests are treated as incomplete fixes.
-
----
-
-## CI Test Requirements
-
-CI runs on every PR:
+## 1. Running the tests
 
 ```bash
-npm ci
-npm run lint
-npm run typecheck
-npm test -- --coverage
-npm run test:db          # database integration tests
-npm run test:integration # integration tests
+npm test              # domain, application and simulation suites
+npm run test:adapters  # persistence and platform adapter suites
+npm run test:all       # everything
+npm run typecheck      # tsc --noEmit
+npm run lint           # eslint, including the architecture rules
 ```
 
-PRs must not be merged while any CI check fails.
+**Node 24 or newer is required.** The persistence suite uses the built-in
+`node:sqlite`, unflagged from Node 23.4.
+
+Nothing here needs a native toolchain, an emulator, or a device. That is deliberate — see §4.
 
 ---
 
-## Known Testing Limitations
+## 2. The two Jest projects
 
-| Limitation | Mitigation |
-|---|---|
-| Real device notification delivery cannot be automated in CI | Manual QA in QA_CHECKLIST.md |
-| Android boot receiver cannot be tested in Jest | Manual QA on real Android device |
-| Real OS contact permission dialog cannot be automated in unit/component tests | expo-contacts is mocked; real permission tested manually |
-| VoiceOver / TalkBack behaviour cannot be verified in Jest | Manual accessibility QA |
-| Very large contact lists (1000+) not practical in unit tests | Performance integration test with generated contacts |
+| Project | Contents | Requirements |
+|---|---|---|
+| `unit` | `__tests__/domain`, `__tests__/app`, `__tests__/simulation` | none |
+| `adapters` | `__tests__/adapters` | `node:sqlite` (built in) |
+
+The split exists so the suites that matter most run everywhere. An earlier version used
+`better-sqlite3`, whose native build aborted the entire dependency install on a Windows machine
+without MSVC — leaving no TypeScript, Jest or ESLint at all. Replacing it with a `SqlDriver` port
+and `node:sqlite` removed that class of failure, and lets migrations be verified through the same
+code path production uses.
 
 ---
 
-## Reporting
+## 3. What is tested where
 
-Test results are reported in CI. For major releases, a QA summary is created referencing:
-- Automated test pass/fail status
-- Coverage report
-- Manual QA checklist completion
-- Known issues and their status
+| Area | Suite | Notes |
+|---|---|---|
+| Clock and Random ports | `domain/ports.test.ts` | Includes a 2000-seed distribution check — a biased shuffle would silently break rotation fairness |
+| E.164 normalisation | `domain/phone.test.ts` | The durable identity key; a bug means duplicate people or a dead WhatsApp link |
+| Local wall-clock and DST | `domain/timezone.test.ts` | Skipped and repeated local times, month clamping, leap years |
+| Cadence evaluation | `domain/cadence.test.ts` | All four worked examples from `docs/DOMAIN.md` §4 asserted directly |
+| Eligibility and rotation | `domain/rotation.test.ts` | The priority ladder, tier by tier |
+| Reminder state machine | `domain/reminderStateMachine.test.ts` | All 5 states × 5 actions, exhaustively |
+| Derived metrics | `domain/metrics.test.ts` | Including the judgement calls — see §5 |
+| **Rotation fairness** | `simulation/fairness.test.ts` | 28 long-horizon simulations. The most important suite in the repo — §6 |
+| Groups and membership | `app/GroupUseCases.test.ts` | Cancel-then-delete ordering, cross-group isolation |
+| Contact sync | `app/SyncContactReferences.test.ts` | Identifier churn, deletion, permission loss |
+| Scheduler | `app/RunScheduler.test.ts` | Idempotence, catch-up, schedule editing |
+| Reminder resolution | `app/ReminderUseCases.test.ts` | What each resolution does *not* record |
+| Notification reconciliation | `app/ReconcileNotifications.test.ts` | Drift repair, the iOS 64-notification budget |
+| History and metrics | `app/HistoryQueries.test.ts` | Consistency across destructive edits |
+| Startup | `app/StartupReconciliation.test.ts` | Step isolation, non-destructive recovery |
+| Normative edge cases | `app/edgeCases.test.ts` | The 19-row table in `docs/DOMAIN.md` §16, with a coverage map |
+| **End-to-end workflow** | `app/endToEnd.test.ts` | The whole pipeline from `docs/PRODUCT.md` §3 — §7 |
+| Schema and migrations | `adapters/migrations.test.ts` | History-preservation constraints |
+| Repositories | `adapters/repositories.test.ts` | Global (not group-scoped) pending and recency |
+| Communication launchers | `adapters/LinkingCommunicationLauncher.test.ts` | `canOpenURL` is never called |
+| Permission allowlist | `adapters/withMinimalPermissions.test.ts` | An unanticipated permission is stripped |
+| **Network independence** | `adapters/networkIndependence.test.ts` | Enforces the no-network promise — §8 |
+
+---
+
+## 4. What the automated suite cannot cover
+
+Being explicit about this matters more than the coverage number.
+
+The suite proves the *logic that consumes* platform behaviour, using fakes. It cannot prove the
+platform's side of the contract. Specifically it cannot test:
+
+- notification delivery with the app force-quit
+- reboot survival of pending notifications
+- the iOS 64-notification cap being applied
+- OEM battery managers on Android
+- iOS 18 limited contact access
+- identifier churn across a real iCloud or Google sync
+- `tel:` and `wa.me` behaviour (the iOS Simulator cannot place calls)
+- whether Hermes on Android honours a named `Intl` timezone
+
+All of these are specified as runnable procedures in `docs/DEVICE_VERIFICATION.md`, with pass
+criteria and what each failure would mean for the design. **They have not been run** — this
+machine has no devices and no iOS toolchain.
+
+A green suite here therefore means "the logic is correct", not "the app works on a phone".
+
+---
+
+## 5. Tests that pin down judgement, not arithmetic
+
+Some assertions exist to stop a later change quietly reversing a decision:
+
+- **Cancellations do not count against the user.** Excluded from the completion-rate denominator
+  and ignored by streaks: a cancellation is the app withdrawing its own request, not the user
+  declining (`docs/DOMAIN.md` §8.4).
+- **`null` is not `0`.** `completionRate` returns null when nothing is resolved, because showing
+  a new user 0% would be false.
+- **Only completion writes contact history.** Skip, snooze, deprioritize and cancel each have a
+  test asserting `lastContactedAt` stays null. Without that, rotation weighting would drift
+  invisibly.
+- **A one-person group repeats every cycle.** Asserted explicitly so it is not mistaken for the
+  repetition pathology §7 forbids, and not "fixed" later.
+- **Notifications never name the person.** A lock screen is visible to anyone holding the phone.
+
+---
+
+## 6. The fairness simulations
+
+`docs/DOMAIN.md` §7 forbids naive random selection because it produces
+`Ahmed · Ahmed · Ahmed · Sara · Ahmed`. That is a property of behaviour over many cycles, which
+no case-by-case test can detect.
+
+The 28 simulations run the real selection code over long horizons and assert:
+
+- nobody is picked in consecutive cycles while others wait — across 2, 3, 5, 10, 30 and
+  100-person groups, and 25 different seeds
+- selections stay within 1 of perfectly even over 120 cycles
+- never-contacted people are exhausted before anyone is revisited
+- an unresolved reminder blocks reselection globally
+- a skip defers but does not exclude; deprioritization excludes while others exist yet stays
+  reachable when nobody else is
+- two groups sharing members never double-remind in the same round
+
+Every run is seeded and clock-driven, so results are reproducible and never flaky.
+
+---
+
+## 7. The end-to-end test
+
+`app/endToEnd.test.ts` walks the entire pipeline through the real use cases, the real SQL layer,
+the real rotation engine and the real reconciliation — only the platform edges are faked.
+
+The per-unit suites prove each piece in isolation; this proves they **compose**. A person selected
+by rotation is the person a reminder is raised for, whose completion writes history that changes
+what the next cycle selects. That chain is where integration bugs live.
+
+It also covers realistic disruption: two months of the app never being opened, a contact deleted
+from the phone, notifications denied, contacts permission revoked mid-life, an app restart, and
+two groups sharing a person.
+
+---
+
+## 8. The network-independence guard
+
+`adapters/networkIndependence.test.ts` scans `src/`, `app/` and `plugins/` on every CI run for
+network APIs and outbound hosts. It is a **source scan, not a runtime interception**: a runtime
+test only catches paths it happens to execute, whereas the promise in `docs/PRODUCT.md` §4 is
+about the presence of a network call *anywhere*.
+
+The guard also guards itself — it asserts it scanned a non-trivial number of files, that a
+planted `fetch(` **is** detected, and that a comment mentioning `fetch` is **not**.
+
+---
+
+## 9. Conventions
+
+- **No test depends on the real clock.** `FakeClock` everywhere; `Date.now()` is lint-banned
+  outside adapters.
+- **No test depends on unseeded randomness.** `SeededRandom` everywhere.
+- **Fakes, not mocks, for ports.** `FakeClock`, `FakeContactProvider`,
+  `FakeNotificationScheduler`, `NodeSqlDriver` — real implementations of the port contract, so
+  they exercise the same code paths production does.
+- **Application tests run against real SQL.** Deliberately: the behaviours under test
+  (cascade vs SET NULL, unique constraints) are expressed in the schema, so a fake repository
+  would pass tests the real database fails.
+- **Comments say why, not what.** A test whose reason is not obvious carries a one-line
+  explanation or a spec reference.

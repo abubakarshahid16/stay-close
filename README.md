@@ -1,201 +1,180 @@
-<div align="center">
+# Stay Close
 
-# 🤝 Stay Close
+**A private, offline relationship-maintenance assistant for iOS and Android.**
 
-**A private, local-first relationship reminder app.**  
-No cloud. No account. No tracking. Your contacts never leave your device.
+No backend. No account. No network requests. Your contacts never leave your device.
 
 [![CI](https://github.com/abubakarshahid16/stay-close/actions/workflows/ci.yml/badge.svg)](https://github.com/abubakarshahid16/stay-close/actions/workflows/ci.yml)
-[![Release](https://github.com/abubakarshahid16/stay-close/actions/workflows/build-android.yml/badge.svg)](https://github.com/abubakarshahid16/stay-close/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Privacy](https://img.shields.io/badge/privacy-100%25%20local-purple)](#-privacy)
 
 ---
 
-## ⬇️ Install Now
+## Status: Functional V1 in progress
 
-<table>
-<tr>
-<td align="center" width="33%">
+This branch is a **ground-up rebuild**, not an update. It replaces an earlier "Circles" version
+with a different product design — see `docs/PRODUCT.md` §8 for the full list of deliberate
+differences.
 
-### 🤖 Android
-
-<a href="https://github.com/abubakarshahid16/stay-close/releases/latest">
-  <img src="https://img.shields.io/badge/Download%20APK-Android-brightgreen?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
-</a>
-
-Download & open the `.apk` file  
-Allow "Install unknown apps" once  
-No Play Store needed
-
-</td>
-<td align="center" width="33%">
-
-### 🌐 Web (any device)
-
-<a href="https://abubakarshahid16.github.io/stay-close">
-  <img src="https://img.shields.io/badge/Open%20Web%20App-Launch-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Open Web App" />
-</a>
-
-Works on any browser  
-iPhone · iPad · PC · Mac  
-No install required
-
-</td>
-<td align="center" width="33%">
-
-### 🍎 iPhone / iPad
-
-<a href="https://abubakarshahid16.github.io/stay-close">
-  <img src="https://img.shields.io/badge/Add%20to%20Home%20Screen-iOS-black?style=for-the-badge&logo=apple&logoColor=white" alt="Add to Home Screen" />
-</a>
-
-Open web app in **Safari**  
-Tap **Share → Add to Home Screen**  
-Opens like a native app
-
-</td>
-</tr>
-</table>
-
----
-
-</div>
-
-## The Problem
-
-You have people in your life who matter — family, old friends, mentors, colleagues — and life gets busy. Weeks pass. Months pass. You mean to reach out, but you forget. By the time you think of someone, it feels awkward.
-
-**Stay Close fixes that.** It gently reminds you who to reach out to next, one person at a time.
-
-## ✨ Features
-
-- **Smart reminders** — A weighted algorithm picks who you've neglected the longest, with a little randomness so it doesn't feel mechanical
-- **Circles** — Group your contacts (Family, Friends, Work, etc.) each with their own reminder cadence: daily, every 3 days, weekly, every 2 weeks, or monthly
-- **Three actions** — "Done — I reached out ✓", "Show someone else", or "Skip for now"
-- **Contact picker** — Search and add directly from your phone contacts
-- **Privacy-first notifications** — Optional local push notifications that show "Time to reach out" without naming the person
-- **Backup & restore** — Export your data as a JSON file; import it anytime
-- **Zero internet** — No network calls, ever. Nothing leaves your phone.
-
-## 📱 Install Guide
-
-### Android
-
-1. Go to the [**latest release**](https://github.com/abubakarshahid16/stay-close/releases/latest)
-2. Download `stay-close-vX.X.X.apk`
-3. Open the file on your phone — tap **Install**
-4. If prompted, allow **Install unknown apps** for your browser in Settings (one-time only)
-
-> Android only needs this permission once. Stay Close itself has **no internet permission**.
-
-### iPhone & iPad (Safari PWA)
-
-1. Open **[abubakarshahid16.github.io/stay-close](https://abubakarshahid16.github.io/stay-close)** in Safari
-2. Tap the **Share** button (box with arrow at the bottom)
-3. Tap **Add to Home Screen**
-4. Tap **Add** — the app icon appears on your home screen
-
-### Web (PC / Mac / any browser)
-
-Open **[abubakarshahid16.github.io/stay-close](https://abubakarshahid16.github.io/stay-close)** — no install needed.
-
-## 🔒 Privacy
-
-- **No internet permission** on Android — the app literally cannot make network calls
-- **No account required** — nothing to sign up for
-- **No analytics, no ads, no tracking** of any kind
-- **Your contacts never leave your device**
-- All data stored locally in SQLite on your phone
-
-## 🛠 Tech Stack
+**There is no installable build yet.** No APK, no App Store or Play Store listing, and no web
+version. The previous release artefacts and the PWA are gone: web is explicitly not a V1 target
+(`docs/PRODUCT.md` §7). Running it today means building it yourself (§Development below).
 
 | | |
 |---|---|
-| Framework | React Native + Expo SDK 57 |
-| Navigation | Expo Router (file-based) |
-| Database | expo-sqlite (local SQLite) |
-| Language | TypeScript (strict) |
-| CI/CD | GitHub Actions |
-| Android builds | Gradle (no EAS required) |
-| Web hosting | GitHub Pages |
+| Functional core | Complete — contacts, groups, schedules, rotation, reminders, notifications, history |
+| Test suite | 549 tests, 22 suites, all passing |
+| Screens | Placeholder only. Phase A is deliberately utilitarian; UI work is Phase B |
+| On-device verification | **Not done** — see `docs/DEVICE_VERIFICATION.md` |
 
-## 👩‍💻 For Developers
-
-### Run locally
-
-```bash
-git clone https://github.com/abubakarshahid16/stay-close.git
-cd stay-close
-npm install
-npx expo start
-```
-
-### Release an Android APK
-
-```bash
-git tag v1.0.1
-git push origin v1.0.1
-# APK appears at /releases in ~15 minutes
-```
-
-GitHub Actions builds the APK automatically on every `v*.*.*` tag.
-
-### Run tests
-
-```bash
-npm test
-```
-
-## 📁 Project Structure
-
-```
-stay-close/
-├── app/                        # Expo Router screens
-│   ├── _layout.tsx             # Root layout (DatabaseProvider)
-│   ├── (tabs)/                 # Tab navigation
-│   │   ├── index.tsx           # Home — today's suggestion
-│   │   └── circles.tsx         # Circles list
-│   ├── circles/
-│   │   ├── create.tsx          # Create circle modal
-│   │   ├── [id].tsx            # Circle detail + people
-│   │   └── [id]/select.tsx     # Contact picker
-│   ├── settings/index.tsx      # Settings screen
-│   └── onboarding/index.tsx    # First-run onboarding
-├── src/
-│   ├── db/
-│   │   ├── database.ts         # Migration runner
-│   │   └── repositories/       # CircleRepo, PeopleRepo, HistoryRepo, SettingsRepo
-│   ├── services/
-│   │   ├── ReminderEngine.ts   # Weighted selection algorithm
-│   │   ├── ContactService.ts   # expo-contacts wrapper
-│   │   ├── NotificationService.ts
-│   │   └── BackupService.ts    # Export / import JSON
-│   ├── context/DatabaseContext.tsx
-│   ├── hooks/                  # useCircles, useSettings
-│   ├── components/             # LoadingView, ErrorView, etc.
-│   ├── types/                  # TypeScript interfaces
-│   └── utils/validation.ts
-├── __tests__/                  # All test suites
-└── .github/workflows/
-    ├── ci.yml                  # Tests on every push
-    ├── build-android.yml       # APK + GitHub Release on tag
-    └── deploy-web.yml          # GitHub Pages on main push
-```
-
-## 🤝 Contributing
-
-Contributions are welcome!
-
-- 🐛 [Report a bug](https://github.com/abubakarshahid16/stay-close/issues/new?template=bug_report.yml)
-- 💡 [Request a feature](https://github.com/abubakarshahid16/stay-close/issues/new?template=feature_request.yml)
-
-## 📄 License
-
-MIT © [abubakarshahid16](https://github.com/abubakarshahid16) — see [LICENSE](LICENSE) for details.
+That last row is the honest gap. The logic is tested; the app has not been run on a phone.
 
 ---
 
-<div align="center">
-Made with ❤️ for people who care about staying connected.
-</div>
+## The problem
+
+You have people who matter — family, old friends, mentors, former colleagues — and life gets
+busy. Weeks pass, then months. You meant to reach out and forgot, and by the time you think of
+them it feels awkward.
+
+Stay Close decides **who to reach out to next**, fairly, and reminds you at a time you chose. It
+is not where the conversation happens — you call or message however you normally would.
+
+---
+
+## How it works
+
+```text
+Phone contacts  →  Groups  →  A schedule per group  →  Fair rotation
+                                                            ↓
+              History  ←  You confirm manually  ←  A reminder
+                    ↓
+        feeds back into who gets chosen next
+```
+
+Four ideas do most of the work:
+
+**Groups, not one big list.** Family, Close Friends, Colleagues — each with its own cadence. A
+person can belong to several, and removing them from one leaves the others untouched.
+
+**People-per-cycle is separate from interval.** "2 people every 7 days" selects two people each
+week. It does *not* promise each individual is contacted weekly. With 30 members, someone comes
+up roughly every 15 weeks.
+
+**Fair rotation, not random.** Naive random gives you `Ahmed · Ahmed · Ahmed · Sara · Ahmed`.
+Selection walks a priority ladder — never contacted, then longest-uncontacted, then
+skip-penalised, then deprioritized — and randomises only *within* equal priority. 28 long-horizon
+simulations assert there is no pathological repetition.
+
+**Nothing is ever inferred.** Opening WhatsApp does not complete a reminder. Neither does opening
+the dialer, or tapping a notification. The app cannot know whether a call connected, and does not
+pretend to. Only your explicit confirmation counts.
+
+---
+
+## Privacy
+
+Not a feature — a constraint the code is built around.
+
+- **No network requests at all.** Enforced by a test that scans the source on every CI run, not
+  merely asserted.
+- **No `INTERNET` permission.** The dependency audit found a transitive Expo plugin adding it;
+  a permission allowlist now strips anything not explicitly justified.
+- **Three Android permissions**, each with a written justification: read contacts, post
+  notifications, receive boot completed.
+- **No analytics, crash reporting, attribution or telemetry** at any depth of the dependency tree.
+- **No account, no login, no backend, no sync.**
+- **Notifications never name the person** — a lock screen is visible to anyone holding the phone.
+
+**What is *not* claimed:** the app does not encrypt its own database. It relies on OS sandboxing
+and platform full-disk encryption. `docs/SECURITY.md` §5 explains exactly what that protects
+against and what it does not, including that a rooted device can read the data.
+
+---
+
+## Development
+
+Requires **Node 24+** (the test suite uses the built-in `node:sqlite`).
+
+```bash
+npm install
+npm run test:all     # 549 tests, no native build or device needed
+npm run typecheck
+npm run lint
+```
+
+Running the app needs a development build — Expo Go cannot carry the config-plugin changes:
+
+```bash
+npx expo prebuild --clean
+npx expo run:android --device
+npx expo run:ios --device      # macOS only
+```
+
+Before trusting a build, check the permission strip actually applied:
+
+```bash
+grep -c "INTERNET"       android/app/src/main/AndroidManifest.xml   # must be 0
+grep -c "WRITE_CONTACTS" android/app/src/main/AndroidManifest.xml   # must be 0
+```
+
+---
+
+## Architecture
+
+Four layers, dependencies pointing strictly inward:
+
+```text
+app/            Expo Router screens          (Phase A: basic controls only)
+src/app/        use cases                    (orchestration, transactions)
+src/domain/     pure logic                   (no I/O, no platform, no clock)
+src/ports/      interfaces                   (declared by the inside)
+src/adapters/   expo-sqlite, expo-contacts, expo-notifications, Linking
+```
+
+The organising principle: **the domain must be testable with no device, no database and no
+clock.** Everything else follows from that — time and randomness are injected, so the scheduling
+engine can be exercised at arbitrary instants with reproducible results.
+
+Six layering rules are **enforced by lint**, not convention: the domain cannot import Expo, React
+or adapters; screens cannot import repositories; `Date.now()` and `Math.random()` are banned
+outside adapters. The previous version's home screen violated four of them — it ran selection,
+wrote history, and queried the database on every render.
+
+Two platform findings shaped the design more than anything else:
+
+- **No reliable background execution exists on either platform.** So the scheduler pre-registers
+  notifications and reconciles idempotently on launch, rather than waking to generate reminders.
+- **Native contact identifiers are not durable.** Android rewrites `_ID` on account sync; iOS
+  identifiers are device-local and lost on restore. Identity anchors on a normalised phone number
+  with the platform id as a repairable fast path, so an ordinary iCloud sync does not look like
+  every contact being deleted.
+
+---
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| `docs/PRODUCT.md` | V1 spec: purpose, scope, privacy rules, phase separation |
+| `docs/DOMAIN.md` | Domain rules, state machines, algorithms — the source of truth |
+| `docs/ARCHITECTURE.md` | Layers, ports, enforced rules, test strategy |
+| `docs/PLATFORM.md` | Verified Expo/iOS/Android capabilities and limits |
+| `docs/DATABASE.md` | Schema, and why history never cascades |
+| `docs/SECURITY.md` | Dependency, network and permission audits |
+| `docs/TESTING.md` | What is tested, and what the suite cannot cover |
+| `docs/DEVICE_VERIFICATION.md` | On-device procedures — written, **not run** |
+
+---
+
+## Contributing
+
+Work is tracked as GitHub issues grouped into milestones M1–M10. Phase A is functional only:
+no colours, typography, animation or visual polish until Functional V1 is complete and verified
+(`docs/PRODUCT.md` §6).
+
+- [Report a bug](https://github.com/abubakarshahid16/stay-close/issues/new?template=bug_report.yml)
+- [Request a feature](https://github.com/abubakarshahid16/stay-close/issues/new?template=feature_request.yml)
+
+## License
+
+MIT © [abubakarshahid16](https://github.com/abubakarshahid16) — see [LICENSE](LICENSE).
