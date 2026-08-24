@@ -6,7 +6,6 @@
  * and in CI.
  */
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { openDatabaseAsync } from 'expo-sqlite';
 import type { SqlDriver, SqlRunResult, SqlValue } from '../../ports/SqlDriver';
 
 export const DATABASE_NAME = 'stay-close.db';
@@ -16,8 +15,21 @@ export class ExpoSqlDriver implements SqlDriver {
 
   constructor(private readonly db: SQLiteDatabase) {}
 
+  /**
+   * Imported lazily rather than at module scope.
+   *
+   * On web, expo-sqlite's entry point sets up a Worker and a
+   * SharedArrayBuffer channel as a side effect of being imported. If that
+   * throws — and it does when the page is not cross-origin isolated — a
+   * top-level import takes the whole bundle down with it, and the app renders
+   * a blank page with no way to report anything.
+   *
+   * Deferring it means the failure lands inside a promise we already catch, so
+   * the app can show a real error instead.
+   */
   static async open(name: string = DATABASE_NAME): Promise<ExpoSqlDriver> {
-    return new ExpoSqlDriver(await openDatabaseAsync(name));
+    const sqlite = await import('expo-sqlite');
+    return new ExpoSqlDriver(await sqlite.openDatabaseAsync(name));
   }
 
   async exec(sql: string): Promise<void> {
