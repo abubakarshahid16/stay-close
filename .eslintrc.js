@@ -25,7 +25,16 @@ module.exports = {
   env: { 'react-native/react-native': true, es2022: true, node: true },
   rules: {
     '@typescript-eslint/no-explicit-any': 'error',
-    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        // Omitting keys via `const { a, ...rest } = obj` is the idiomatic way to
+        // derive one type from another; the discarded bindings are the point.
+        ignoreRestSiblings: true,
+      },
+    ],
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     'react/react-in-jsx-scope': 'off',
