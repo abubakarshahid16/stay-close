@@ -123,6 +123,19 @@ export interface ScheduleOccurrenceRepository {
   has(scheduleId: ScheduleId, occurrenceAt: Instant): Promise<boolean>;
   findBySchedule(scheduleId: ScheduleId): Promise<ScheduleOccurrence[]>;
   latest(scheduleId: ScheduleId): Promise<ScheduleOccurrence | null>;
+
+  /**
+   * Correct the recorded count after selection.
+   *
+   * The scheduler claims the occurrence row *before* selecting, so the claim
+   * cannot know how many people it will pick. Without this the stored count
+   * would always read 0 and quietly misreport history.
+   */
+  setSelectedCount(
+    scheduleId: ScheduleId,
+    occurrenceAt: Instant,
+    selectedCount: number
+  ): Promise<void>;
 }
 
 // ── Reminders ───────────────────────────────────────────────────────────────

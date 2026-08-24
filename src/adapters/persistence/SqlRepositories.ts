@@ -551,6 +551,17 @@ export class SqlScheduleOccurrenceRepository implements ScheduleOccurrenceReposi
     );
     return row ? mapOccurrence(row) : null;
   }
+
+  async setSelectedCount(
+    sid: ScheduleId,
+    occurrenceAt: Instant,
+    selectedCount: number
+  ): Promise<void> {
+    await this.db.run(
+      'UPDATE schedule_occurrences SET selected_count = ? WHERE schedule_id = ? AND occurrence_at = ?',
+      [selectedCount, sid, toIso(occurrenceAt)]
+    );
+  }
 }
 
 // ── reminders ───────────────────────────────────────────────────────────────
