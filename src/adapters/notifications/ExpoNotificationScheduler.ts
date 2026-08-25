@@ -84,6 +84,39 @@ export class ExpoNotificationScheduler implements NotificationScheduler {
     });
   }
 
+  /**
+   * A notification a few seconds out, so the user can see for themselves that
+   * reminders reach this device.
+   *
+   * Seconds rather than immediate: an immediately-presented notification is
+   * easy to miss while the app is in the foreground, and the point is to watch
+   * it arrive. Not keyed by ReminderId, so reconciliation leaves it alone.
+   */
+  async sendTest(content: NotificationContent): Promise<boolean> {
+    try {
+      await this.ensureChannel();
+      const permission = await this.permission();
+      if (permission.state !== 'granted') return false;
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: content.title,
+          body: content.body,
+          badge: undefined,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 5,
+          repeats: false,
+          channelId: Platform.OS === 'android' ? ANDROID_CHANNEL_ID : undefined,
+        },
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async cancel(id: ReminderId): Promise<void> {
     try {
       await Notifications.cancelScheduledNotificationAsync(notificationIdFor(id));

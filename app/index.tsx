@@ -28,6 +28,7 @@ import {
 } from '../src/ui/basics';
 import type { ReminderView } from '../src/usecases/reminders/ReminderUseCases';
 import type { NotificationPermission } from '../src/ports/NotificationScheduler';
+import { canOpenAppSettings, openAppSettings } from '../src/ui/openAppSettings';
 import { isErr } from '../src/domain/shared/Result';
 import type { ReminderId } from '../src/domain/shared/ids';
 
@@ -91,27 +92,74 @@ export default function HomeScreen() {
             ? 'Notifications are turned off for Stay Close. You can turn them on in your device Settings. Until then, open the app to see who is due.'
             : 'Stay Close needs permission to send notifications. Without it, reminders only appear when you open the app.'}
         </Body>
-        {terminal ? null : (
-          <>
-            <Spacer />
+        <Spacer />
+        {terminal ? (
+          // Requesting again is a silent no-op once the OS has stopped
+          // prompting, so the only thing left that can actually change the
+          // state is Settings.
+          canOpenAppSettings ? (
             <Button
-              label="Turn on notifications"
+              label="Open Settings"
               variant="primary"
-              onPress={() => {
-                void (async () => {
-                  try {
-                    await app.notificationsProvider.request();
-                  } finally {
-                    await load();
-                    // Schedule anything that is already pending.
-                    await app.notifications.run();
-                  }
-                })();
-              }}
+              onPress={() => void openAppSettings()}
             />
-          </>
+          ) : null
+        ) : (
+          <Button
+            label="Turn on notifications"
+            variant="primary"
+            onPress={() => {
+              void (async () => {
+                try {
+                  await app.notificationsProvider.request();
+                } finally {
+                  await load();
+                  // Schedule anything already pending, so granting takes effect
+                  // immediately rather than at the next app launch.
+                  await app.notifications.run();
+                }
+              })();
+            }}
+          />
         )}
       </Card>
+    );
+  };
+
+  /**
+   * Lets the user confirm notifications reach this device without waiting for a
+   * real reminder.
+   *
+   * Without it there is no way to tell a working setup from a silently blocked
+   * one until the next scheduled time, which may be days away — and "silently
+   * blocked" is exactly the state this app was in before it started asking for
+   * permission at all.
+   */
+  const TestAlert = () => {
+    if (notifications === null || notifications.state !== 'granted') return null;
+
+    return (
+      <>
+        <Button
+          label="Send a test reminder"
+          variant="quiet"
+          onPress={() => {
+            void (async () => {
+              const sent = await app.notificationsProvider.sendTest({
+                title: 'Stay Close',
+                body: 'Notifications are working. Real reminders will arrive like this.',
+              });
+              Alert.alert(
+                sent ? 'Test sent' : 'Could not send',
+                sent
+                  ? 'It should appear in a few seconds. If it does not, check that notifications are allowed for Stay Close in your device Settings.'
+                  : 'Your device refused to show the notification. Check that notifications are allowed for Stay Close in Settings.'
+              );
+            })();
+          }}
+        />
+        <Spacer />
+      </>
     );
   };
 
@@ -229,6 +277,8 @@ export default function HomeScreen() {
         <NotificationWarning />
         <Body>You are up to date. Stay Close will let you know when someone is due.</Body>
         <Spacer />
+        <TestAlert />
+        <Spacer />
         <Button label="Your groups" onPress={() => router.push('/groups')} />
       </Screen>
     );
@@ -239,6 +289,7 @@ export default function HomeScreen() {
       <Heading>Reach out to</Heading>
 
       <NotificationWarning />
+      <TestAlert />
 
       {views.map((view) => (
         <View key={String(view.reminder.id)}>

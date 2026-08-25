@@ -25,6 +25,7 @@ import {
   Spacer,
 } from '../../../src/ui/basics';
 import { ManualPersonForm } from '../../../src/ui/ManualPersonForm';
+import { canOpenAppSettings, openAppSettings } from '../../../src/ui/openAppSettings';
 import type { ContactPermissionState, ResolvedContact } from '../../../src/ports/ContactProvider';
 import { groupId as toGroupId } from '../../../src/domain/shared/ids';
 import { isErr } from '../../../src/domain/shared/Result';
@@ -47,17 +48,27 @@ export default function AddPeopleScreen() {
     try {
       current = await app.contactsProvider.permission();
 
-      // Ask the OS straight away the first time. Previously this screen showed
-      // an explanation and waited for a tap on "Allow contacts", so the system
-      // prompt never appeared unless it was found — and with a manual entry
-      // form right below it, the reasonable thing to do looked like typing
-      // people in by hand. Reported from a real phone as "it didn't ask for
-      // contacts permission".
+      // Ask the OS straight away whenever it will still show the prompt.
       //
-      // Only when the OS has genuinely not been asked yet: re-requesting after
-      // a denial does nothing on Android and is a no-op we should not hide
-      // behind.
-      if (current.state === 'undetermined' && current.canAskAgain) {
+      // The condition used to be `state === 'undetermined'`, and that was
+      // reported from a real phone as still not asking. The reason is that
+      // 'undetermined' is not what Android reports once the app has asked even
+      // once before: expo-modules-core decides the status as
+      //
+      //     granted            -> GRANTED
+      //     didAsk(permission) -> DENIED
+      //     otherwise          -> UNDETERMINED
+      //
+      // where didAsk is a SharedPreferences flag that SURVIVES APP UPDATES. So
+      // anyone who had tapped "Allow contacts" and declined on an earlier build
+      // was permanently reported as 'denied', the auto-request never fired, and
+      // the screen fell back to the same button that had not worked for them.
+      //
+      // canAskAgain is the only thing that actually decides whether a prompt
+      // can appear, so that is what this asks about. Android allows one further
+      // prompt after a single decline and then sets canAskAgain false, so this
+      // cannot become an endless nag.
+      if (current.state !== 'granted' && current.state !== 'limited' && current.canAskAgain) {
         current = await app.contactsProvider.request();
       }
     } catch (error) {
@@ -196,10 +207,22 @@ export default function AddPeopleScreen() {
             </Body>
             <Spacer />
             {terminal ? (
-              <Body dim>
-                Contacts access is turned off for Stay Close. You can change it in your device
-                Settings, or add people by hand below.
-              </Body>
+              <>
+                <Body dim>
+                  Contacts access is turned off for Stay Close, and Android will not ask again.
+                  It has to be switched on in Settings.
+                </Body>
+                {canOpenAppSettings ? (
+                  <>
+                    <Spacer />
+                    <Button
+                      label="Open Settings"
+                      variant="primary"
+                      onPress={() => void openAppSettings()}
+                    />
+                  </>
+                ) : null}
+              </>
             ) : (
               <Button label="Allow contacts" variant="primary" onPress={() => void request()} />
             )}

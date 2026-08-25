@@ -21,6 +21,8 @@ export interface ScheduledEntry {
 }
 
 export class FakeNotificationScheduler implements NotificationScheduler {
+  readonly testCalls: NotificationContent[] = [];
+
   private entries = new Map<ReminderId, ScheduledEntry>();
   private state: NotificationPermissionState = 'granted';
   private askAgain = true;
@@ -64,6 +66,12 @@ export class FakeNotificationScheduler implements NotificationScheduler {
     // Replaces rather than stacks, matching the real adapter.
     this.entries.set(id, { id, at, content });
     this.scheduleCalls.push({ id, at, content });
+  }
+
+  /** Recorded so tests can assert a test alert was attempted, and honoured. */
+  async sendTest(content: NotificationContent): Promise<boolean> {
+    this.testCalls.push(content);
+    return this.state === 'granted';
   }
 
   async cancel(id: ReminderId): Promise<void> {

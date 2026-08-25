@@ -76,6 +76,46 @@ describe('asking for notification permission', () => {
   });
 });
 
+describe('the test alert', () => {
+  // Exists so a user can tell a working setup from a silently blocked one
+  // without waiting for a scheduled reminder.
+  it('is delivered when permission is granted', async () => {
+    const { container, notifications } = await harness();
+    notifications.setPermission('granted');
+
+    const sent = await container.notificationsProvider.sendTest({
+      title: 'Stay Close',
+      body: 'Notifications are working.',
+    });
+
+    expect(sent).toBe(true);
+    expect(notifications.testCalls).toHaveLength(1);
+  });
+
+  it('reports failure rather than claiming success when blocked', async () => {
+    const { container, notifications } = await harness();
+    notifications.setPermission('denied', false);
+
+    // The distinction matters: telling someone a test was sent when the OS
+    // dropped it sends them looking for a notification that will never arrive.
+    expect(
+      await container.notificationsProvider.sendTest({ title: 'x', body: 'y' })
+    ).toBe(false);
+  });
+
+  it('is not keyed by a reminder, so reconciliation cannot cancel it', async () => {
+    const { container, notifications } = await harness();
+    notifications.setPermission('granted');
+    await container.notificationsProvider.sendTest({ title: 'x', body: 'y' });
+
+    // A test alert must not appear among the scheduled reminders, or the next
+    // reconcile would cancel it as unwanted.
+    expect(await notifications.listScheduled()).toHaveLength(0);
+    await container.notifications.run();
+    expect(notifications.testCalls).toHaveLength(1);
+  });
+});
+
 describe('why asking matters', () => {
   /** A group with one member and a weekly schedule, plus one due reminder. */
   async function withADueReminder() {

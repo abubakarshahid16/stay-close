@@ -58,6 +58,22 @@ export interface NotificationScheduler {
   cancel(id: ReminderId): Promise<void>;
 
   /**
+   * Deliver one notification shortly from now, unrelated to any reminder.
+   *
+   * Exists so a user can find out whether notifications reach this device
+   * WITHOUT waiting for a real reminder to come due. That gap is the whole
+   * problem: a schedule can be days away, and until it fires there is nothing
+   * to distinguish "working" from "silently blocked by the OS" — which is the
+   * state this app shipped in.
+   *
+   * Not keyed by ReminderId, so reconciliation neither knows nor cancels it.
+   *
+   * @returns false when the platform declined to deliver, so the caller can say
+   *   so rather than claim success.
+   */
+  sendTest(content: NotificationContent): Promise<boolean>;
+
+  /**
    * Everything currently registered with the OS, with its scheduled time.
    * Used for drift repair — see ScheduledNotification.
    */

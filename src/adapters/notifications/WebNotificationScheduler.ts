@@ -82,6 +82,24 @@ export class WebNotificationScheduler implements NotificationScheduler {
     this.timers.set(id, { at, handle });
   }
 
+  /**
+   * Fires immediately rather than on a delay.
+   *
+   * A browser cannot schedule a notification for later without a server, which
+   * is why web reminders are in-app only — but it CAN show one now, and that is
+   * enough to answer "do notifications reach me here".
+   */
+  async sendTest(content: NotificationContent): Promise<boolean> {
+    try {
+      if (typeof Notification === 'undefined') return false;
+      if (Notification.permission !== 'granted') return false;
+      new Notification(content.title, { body: content.body });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async cancel(id: ReminderId): Promise<void> {
     const existing = this.timers.get(id);
     if (!existing) return;
