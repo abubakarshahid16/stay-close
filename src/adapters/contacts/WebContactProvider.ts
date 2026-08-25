@@ -41,6 +41,18 @@ export class WebContactProvider implements ContactProvider {
     return null;
   }
 
+  /**
+   * Browsers have no address book, so there is no picker to present.
+   *
+   * The Contact Picker API exists in Chrome on Android only, behind a secure
+   * context, and is not available in Safari or on desktop. Claiming support
+   * here and failing on most browsers would be worse than saying no: the web
+   * build asks people to type a name and number, and says so.
+   */
+  async pickOne(): Promise<null> {
+    return null;
+  }
+
   async list(): Promise<readonly ResolvedContact[]> {
     return [];
   }

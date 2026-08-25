@@ -66,4 +66,22 @@ export interface ContactProvider {
   findByPhone(e164: string): Promise<ResolvedContact | null>;
 
   list(options?: ListContactsOptions): Promise<readonly ResolvedContact[]>;
+
+  /**
+   * Ask the OS to show its own contact picker and return the chosen person.
+   *
+   * Materially different from `list()`, and the difference is the point. `list()`
+   * reads the whole address book, which is why it needs READ_CONTACTS. This
+   * hands the choice to the operating system: the OS renders the list, the user
+   * picks one, and the app receives only that person. The app never sees anyone
+   * the user did not choose.
+   *
+   * It therefore works when the contacts permission has been declined, which is
+   * the state a user can otherwise be stuck in — Android stops prompting after
+   * two refusals, and from then on `list()` can never succeed.
+   *
+   * @returns the chosen contact, or null if the user cancelled or the platform
+   *   has no picker (a browser has no address book at all).
+   */
+  pickOne(): Promise<ResolvedContact | null>;
 }

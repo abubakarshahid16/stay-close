@@ -132,6 +132,45 @@ export default function AddPeopleScreen() {
     if (result.state === 'granted' || result.state === 'limited') await load();
   }
 
+  /**
+   * Add someone through the OS's own contact picker.
+   *
+   * Works whatever the permission state, because the user is choosing in a
+   * system UI rather than the app reading the address book. That matters: after
+   * two refusals Android never prompts again, and until now the only route left
+   * was typing a name and number by hand.
+   */
+  async function pickFromSystem() {
+    setBusy(true);
+    try {
+      const picked = await app.contactsProvider.pickOne();
+      if (!picked) return; // cancelled, or the platform refused the read
+
+      const e164 = picked.phones.find((p) => p.e164 !== null)?.e164;
+      if (!e164) {
+        Alert.alert(
+          'No usable number',
+          `${picked.displayName} has no phone number Stay Close could read. Adding the country code to it in your contacts app fixes that, or add them by hand below.`
+        );
+        return;
+      }
+
+      const result = await app.groups.addMember(id, {
+        phoneE164: e164,
+        displayName: picked.displayName,
+        nativeId: picked.nativeId,
+      });
+      if (isErr(result)) {
+        Alert.alert('Could not add', result.error.detail);
+        return;
+      }
+      setAlreadyIn((previous) => new Set([...previous, e164]));
+      Alert.alert('Added', `${picked.displayName} is now in this group.`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function add(contact: ResolvedContact) {
     const e164 = contact.phones.find((p) => p.e164 !== null)?.e164;
     if (!e164) return;
@@ -226,6 +265,25 @@ export default function AddPeopleScreen() {
             ) : (
               <Button label="Allow contacts" variant="primary" onPress={() => void request()} />
             )}
+          </>
+        )}
+
+        {noAddressBook ? null : (
+          <>
+            <Spacer />
+            <Divider />
+            <Spacer />
+            <Body>
+              You can also pick one person at a time without giving Stay Close access to your whole
+              address book. Your phone shows the list; Stay Close only receives who you choose.
+            </Body>
+            <Spacer />
+            <Button
+              label="Choose from contacts"
+              variant="primary"
+              disabled={busy}
+              onPress={() => void pickFromSystem()}
+            />
           </>
         )}
 

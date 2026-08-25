@@ -23,6 +23,9 @@ export interface FakeContactSeed {
 }
 
 export class FakeContactProvider implements ContactProvider {
+  pickCalls = 0;
+  private pickResult: ResolvedContact | null = null;
+
   private contacts = new Map<string, ResolvedContact>();
   private permissionState: ContactPermissionState = 'granted';
   private askAgain = true;
@@ -92,6 +95,22 @@ export class FakeContactProvider implements ContactProvider {
       if (contact.phones.some((p) => p.e164 === e164)) return contact;
     }
     return null;
+  }
+
+  /**
+   * Returns whatever `setPickResult` was given, so a test can model the user
+   * choosing someone, cancelling, or the platform refusing the read.
+   *
+   * Deliberately ignores the permission state: the whole point of the picker is
+   * that it works without one.
+   */
+  async pickOne(): Promise<ResolvedContact | null> {
+    this.pickCalls += 1;
+    return this.pickResult;
+  }
+
+  setPickResult(contact: ResolvedContact | null): void {
+    this.pickResult = contact;
   }
 
   async list(options?: ListContactsOptions): Promise<readonly ResolvedContact[]> {

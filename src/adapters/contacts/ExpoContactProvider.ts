@@ -102,6 +102,37 @@ export class ExpoContactProvider implements ContactProvider {
     }
   }
 
+  /**
+   * The OS's own contact picker.
+   *
+   * Deliberately does NOT check or request permission first. Nothing in the
+   * expo-contacts Android bridge guards presentPicker or getDetails with
+   * ensurePermissions() — unlike getAll — because the user is choosing the
+   * contact in a system UI rather than the app reading the address book.
+   *
+   * That makes this the one route to adding someone that still works after the
+   * contacts permission has been refused for good, which Android allows after
+   * two declines.
+   *
+   * Whether reading the picked contact's number then succeeds without
+   * READ_CONTACTS is a platform question this cannot answer from source: after
+   * ACTION_PICK, Android grants read access to the returned URI, but Expo
+   * rebuilds the contact from its id through the content resolver. If the read
+   * is refused, this returns null and the caller falls back to manual entry
+   * rather than failing.
+   */
+  async pickOne(): Promise<ResolvedContact | null> {
+    try {
+      const picked = await Contact.presentPicker();
+      if (!picked) return null; // cancelled
+
+      const details = (await picked.getDetails(FIELDS)) as DetailsShape;
+      return this.toResolved(nativeContactId(String(picked.id)), details);
+    } catch {
+      return null;
+    }
+  }
+
   private toResolved(id: NativeContactId, details: DetailsShape): ResolvedContact | null {
     const displayName = (details.fullName ?? '').trim();
     if (displayName.length === 0) return null;
