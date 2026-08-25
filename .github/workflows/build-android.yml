@@ -195,16 +195,15 @@ jobs:
           cat requested.txt
           echo "------------------------------------"
 
-          # printf rather than a heredoc: a heredoc terminator has to sit at
-          # column 0, which ends this YAML block scalar and breaks the file.
-          # Built with echo rather than a heredoc or a line-continued printf:
-          # a heredoc terminator must sit at column 0, which would end this
-          # YAML block scalar, and a continued printf is easy to mangle.
-          {
-            echo 'android.permission.POST_NOTIFICATIONS'
-            echo 'android.permission.READ_CONTACTS'
-            echo 'android.permission.RECEIVE_BOOT_COMPLETED'
-          } | sort -u > allowed.txt
+          # Read from the plugin rather than restated here. A hardcoded copy in
+          # this file is what let the list drift: it named only the three
+          # android.permission.* entries, so ten vendor-prefixed permissions went
+          # unnoticed until the allowlist was asserted against the built APK.
+          node scripts/allowed-permissions.mjs | sort -u > allowed.txt
+          
+          echo "--- permissions the plugin allows ---"
+          cat allowed.txt
+          echo "-------------------------------------"
 
           FAILED=0
 

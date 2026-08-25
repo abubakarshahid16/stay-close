@@ -38,6 +38,23 @@ const ALLOWED = {
 };
 
 /**
+ * Permissions that legitimately appear in the merged manifest but are not
+ * requests made of the user, and must NOT be stripped.
+ *
+ * AndroidX defines `${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`
+ * for itself and uses it to protect its own dynamically-registered receivers.
+ * It is signature-level and scoped to this app, so no other app can hold it and
+ * nothing is disclosed by it. Removing it breaks receiver registration on
+ * current AndroidX.
+ *
+ * Listed explicitly so the APK permission check can assert an exact set rather
+ * than carrying a second copy of this knowledge in CI.
+ */
+const TOLERATED = [
+  'com.stayclose.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION',
+];
+
+/**
  * Permissions known to be contributed by our dependency tree that this product
  * does not justify. Each is removed via the manifest merger.
  *
@@ -79,6 +96,30 @@ const REMOVE = [
   'com.anddoes.launcher.permission.UPDATE_COUNT',
   'me.everything.badger.permission.BADGE_COUNT_READ',
   'me.everything.badger.permission.BADGE_COUNT_WRITE',
+
+  // Everything below was found by the APK allowlist check, which asserts the
+  // exact set of <uses-permission> entries in the built artefact. None of it
+  // was visible to the previous checks, or to a manifest scan looking only for
+  // names beginning "android.permission." — they are all vendor-prefixed.
+
+  // Firebase Cloud Messaging. expo-notifications ships remote-push support;
+  // this product sends only LOCAL notifications. It is also already inert:
+  // INTERNET is stripped, so FCM cannot reach a server whatever it holds.
+  'com.google.android.c2dm.permission.RECEIVE',
+
+  // Play Store install attribution. This is precisely the install-source
+  // tracking docs/PRODUCT.md rules out, and nothing in the app reads it.
+  'com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE',
+
+  // The remaining OEM launcher badge permissions, from the same badge feature
+  // as READ_APP_BADGE above. Different vendors, same non-feature.
+  'com.huawei.android.launcher.permission.CHANGE_BADGE',
+  'com.huawei.android.launcher.permission.READ_SETTINGS',
+  'com.huawei.android.launcher.permission.WRITE_SETTINGS',
+  'com.oppo.launcher.permission.READ_SETTINGS',
+  'com.oppo.launcher.permission.WRITE_SETTINGS',
+  'com.majeur.launcher.permission.UPDATE_BADGE',
+  'com.sonymobile.home.permission.PROVIDER_INSERT_BADGE',
 ];
 
 const TOOLS_NS = 'http://schemas.android.com/tools';
@@ -108,6 +149,7 @@ function enforceMinimalPermissions(manifest) {
   const kept = existing.filter((entry) => {
     const name = nameOf(entry);
     if (typeof name !== 'string') return true;
+    if (TOLERATED.includes(name)) return true;
     return Object.prototype.hasOwnProperty.call(ALLOWED, name);
   });
 
@@ -137,4 +179,5 @@ module.exports = function withMinimalPermissions(config) {
 module.exports.enforceMinimalPermissions = enforceMinimalPermissions;
 module.exports.ALLOWED_PERMISSIONS = ALLOWED;
 module.exports.REMOVED_PERMISSIONS = REMOVE;
+module.exports.TOLERATED_PERMISSIONS = TOLERATED;
 module.exports.AndroidConfigAvailable = Boolean(AndroidConfig);
