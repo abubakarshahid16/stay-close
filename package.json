@@ -69,5 +69,8 @@
   },
   "engines": {
     "node": ">=24"
+  },
+  "overrides": {
+    "expo-modules-jsi": "57.0.5"
   }
 }
