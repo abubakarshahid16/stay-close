@@ -11,7 +11,8 @@
  *   (docs/PLATFORM.md §1.2).
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, TextInput, StyleSheet, View } from 'react-native';
+import { Alert, Platform, TextInput, StyleSheet, View } from 'react-native';
+import * as Localization from 'expo-localization';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useContainer } from '../../../src/ui/AppContext';
 import {
@@ -42,6 +43,31 @@ export default function AddPeopleScreen() {
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState<string[]>([]);
+
+  /**
+   * Records exactly what the app can see, so a problem on a real device can be
+   * read off the screen instead of guessed at from here.
+   *
+   * This exists because three separate attempts to fix "contacts do not load"
+   * were reasoned out rather than measured, and each was wrong in a different
+   * way. The permission state, the provider actually wired in, and the number
+   * of contacts that survived phone-number parsing are three different failures
+   * that look identical from the outside.
+   */
+  const recordDiagnostics = useCallback(
+    (state: string, canAsk: boolean, listed: number) => {
+      setDiagnostics([
+        `platform: ${Platform.OS} ${Platform.Version}`,
+        `provider: ${app.contactsProvider.constructor.name}`,
+        `permission: ${state}`,
+        `can ask again: ${canAsk}`,
+        `contacts returned: ${listed}`,
+        `region: ${Localization.getLocales()[0]?.regionCode ?? 'unknown'}`,
+      ]);
+    },
+    [app]
+  );
 
   const load = useCallback(async () => {
     let current;
@@ -84,10 +110,14 @@ export default function AddPeopleScreen() {
 
     if (current.state !== 'granted' && current.state !== 'limited') {
       setCandidates([]);
+      recordDiagnostics(current.state, current.canAskAgain, 0);
       return;
     }
 
-    setCandidates(await app.contactsProvider.list());
+    const listed = await app.contactsProvider.list();
+    setCandidates(listed);
+
+    recordDiagnostics(current.state, current.canAskAgain, listed.length);
 
     // Existing members, keyed by normalised number so re-adding is visible as
     // already-added rather than silently doing nothing.
@@ -98,7 +128,7 @@ export default function AddPeopleScreen() {
       if (contact) numbers.add(contact.phoneE164);
     }
     setAlreadyIn(numbers);
-  }, [app, id]);
+  }, [app, id, recordDiagnostics]);
 
   useEffect(() => {
     void load();
@@ -124,6 +154,25 @@ export default function AddPeopleScreen() {
     if (!q) return usable;
     return usable.filter((c) => c.displayName.toLowerCase().includes(q));
   }, [usable, query]);
+
+  /** Shown on screen so it can be read back verbatim, not paraphrased. */
+  const Diagnostics = () => {
+    if (diagnostics.length === 0) return null;
+    return (
+      <>
+        <Spacer />
+        <Divider />
+        <Spacer />
+        <Body dim>What Stay Close can see on this device:</Body>
+        {diagnostics.map((line) => (
+          <Body dim key={line}>
+            {'  '}
+            {line}
+          </Body>
+        ))}
+      </>
+    );
+  };
 
   async function request() {
     const result = await app.contactsProvider.request();
@@ -290,6 +339,8 @@ export default function AddPeopleScreen() {
         <Spacer />
         <ManualPersonForm onAdd={addManually} busy={busy} />
 
+        <Diagnostics />
+
         <Spacer />
         <Button
           label="Done"
@@ -366,6 +417,8 @@ export default function AddPeopleScreen() {
       {/* Also reachable with permission granted: under limited access, or when
           a number could not be read, the address book alone is not enough. */}
       <ManualPersonForm onAdd={addManually} busy={busy} />
+
+      <Diagnostics />
 
       <Spacer />
       <Button label="Done" variant="primary" onPress={() => router.replace(`/groups/${params.id}`)} />

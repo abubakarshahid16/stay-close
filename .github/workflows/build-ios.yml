@@ -1,0 +1,134 @@
+name: Build iOS
+
+# Proves the iOS app actually compiles, which nothing has ever checked.
+#
+# WHAT THIS DOES NOT DO, and cannot:
+#
+# It does not produce something an iPhone user can install. Apple permits
+# installing an app only through the App Store, TestFlight, or ad-hoc
+# provisioning with registered device UDIDs, and every one of those requires a
+# paid Apple Developer Program membership and a signing certificate. There is no
+# equivalent of sideloading an APK. A person with a Mac, Xcode and a free Apple
+# ID can install onto their OWN device with a 7-day expiry, but that is not a
+# link anyone can tap.
+#
+# So the honest iOS story stays: the web app, added to the Home Screen from
+# Safari. That path is exercised on every push by the WebKit checks in
+# deploy-web.yml.
+#
+# What this DOES do is make sure the iOS target is not quietly rotting. The
+# project has iOS config (NSContactsUsageDescription, bundle identifier) that
+# nothing has ever compiled, and a config-plugin change or a dependency bump can
+# break the iOS build without touching Android. When an Apple account does
+# appear, the difference between "add signing" and "start debugging" is whether
+# this has been running.
+#
+# Built unsigned for the simulator, which is the only way to compile without a
+# certificate.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'src/**'
+      - 'plugins/**'
+      - 'app.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/build-ios.yml'
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPO_NO_TELEMETRY: '1'
+
+jobs:
+  build:
+    name: Compile for the simulator
+    # macOS runners cost ten times a Linux minute, hence the path filter above.
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate the iOS project
+        run: npx expo prebuild --platform ios --clean
+
+      # The usage-description strings are a launch blocker on iOS: reading
+      # contacts without NSContactsUsageDescription does not fail gracefully,
+      # it terminates the app. Checked against the GENERATED Info.plist rather
+      # than app.json, because that is what ships.
+      - name: Verify the required usage descriptions
+        run: |
+          PLIST=ios/StayClose/Info.plist
+          if [ ! -f "$PLIST" ]; then
+            PLIST=$(find ios -name 'Info.plist' -not -path '*/Pods/*' | head -1)
+          fi
+          echo "Using $PLIST"
+
+          if ! /usr/libexec/PlistBuddy -c 'Print :NSContactsUsageDescription' "$PLIST" >/dev/null 2>&1; then
+            echo "::error::NSContactsUsageDescription missing from $PLIST. iOS terminates the app on contact access without it."
+            exit 1
+          fi
+          echo "NSContactsUsageDescription: $(/usr/libexec/PlistBuddy -c 'Print :NSContactsUsageDescription' "$PLIST")"
+
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install --repo-update
+
+      - name: Find the workspace and scheme
+        id: xcode
+        run: |
+          WORKSPACE=$(find ios -maxdepth 1 -name '*.xcworkspace' | head -1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+          echo "Workspace: $WORKSPACE  Scheme: $SCHEME"
+
+      # CODE_SIGNING_ALLOWED=NO is what makes this possible without a
+      # certificate. A simulator build never needs one.
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace "${{ steps.xcode.outputs.workspace }}" \
+            -scheme "${{ steps.xcode.outputs.scheme }}" \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build 2>&1 | tee xcodebuild.log | xcpretty || BUILD_FAILED=1
+
+          if [ "${BUILD_FAILED:-0}" = "1" ]; then
+            echo "::group::xcodebuild output (tail)"
+            tail -150 xcodebuild.log
+            echo "::endgroup::"
+
+            grep -E "error:|fatal error:|The following build commands failed" xcodebuild.log \
+              | head -20 | while IFS= read -r LINE; do
+                  echo "::error::$(printf '%s' "$LINE" | cut -c1-400)"
+                done
+            exit 1
+          fi
+
+      - name: Upload the build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-log
+          path: xcodebuild.log
+          retention-days: 7
