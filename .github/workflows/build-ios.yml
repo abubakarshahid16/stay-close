@@ -84,16 +84,23 @@ jobs:
       #   or SWIFT_RETURNS_UNRETAINED because it is not returning a
       #   SWIFT_SHARED_REFERENCE type
       #
-      # So: the OLDEST Xcode 26, which is the oldest that satisfies swift-tools
-      # 6.2 while adding the fewest new strictness rules for SDK 57 to trip over.
-      # Still chosen by pattern rather than pinned to an exact build, so a runner
-      # image update does not silently break it.
+      # Trying the oldest Xcode 26 instead was worse, not better: 26.0.1
+      # produced the same interop errors PLUS a set of
+      #
+      #   'weak' must be a mutable variable, because it may change at runtime
+      #
+      # which newer Swift accepts. So the newest is the closest to compiling,
+      # and the remaining blocker is the interop annotation above.
+      #
+      # Chosen by pattern rather than pinned to an exact build, so a runner
+      # image refresh does not silently break it - and so this starts passing
+      # on its own if a later Xcode or Expo release resolves the interop rule.
       - name: Select Xcode
         run: |
           echo "Xcode versions available:"
           ls -d /Applications/Xcode_*.app
       
-          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | head -1)
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
           if [ -z "$XCODE" ]; then
             echo "::error::No Xcode 26 on this runner. Expo SDK 57 needs Swift 6.2."
             exit 1
@@ -149,7 +156,7 @@ jobs:
           xcodebuild \
             -workspace "${{ steps.xcode.outputs.workspace }}" \
             -scheme "${{ steps.xcode.outputs.scheme }}" \
-            -configuration Release \
+            -configuration Debug \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
