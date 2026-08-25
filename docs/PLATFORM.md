@@ -430,6 +430,52 @@ tracked by an existing issue.
 
 ---
 
+## 6.1 iOS: no installable build, and currently no compiling one
+
+Two separate facts, often conflated.
+
+**There is no way to let people install an iOS build without a paid Apple
+Developer Program membership.** Apple permits installation only through the App
+Store, TestFlight, or ad-hoc provisioning with pre-registered device UDIDs, and
+all three require membership plus a signing certificate. There is no iPhone
+equivalent of sideloading an APK. Someone with a Mac, Xcode and a free Apple ID
+can install onto their own device with a 7-day expiry; that is not a link
+anyone can tap. This is policy, not a gap in the build.
+
+**Separately, the iOS target does not currently compile at all.** Nothing had
+ever built it, so this went unnoticed until `.github/workflows/build-ios.yml`
+was added. Established over five builds:
+
+| Xcode | Result |
+|---|---|
+| 16.4 (runner default) | package resolution fails: Expo's `apple` package needs swift-tools 6.2, this has Swift 6.1 |
+| 26.0.1 | interop errors **plus** eight `'weak' must be a mutable variable` |
+| 26.3 (newest available) | interop errors only — closest to compiling |
+| Debug vs Release | identical, so not a build-settings choice |
+
+The remaining blocker is in a dependency's own C++ headers:
+
+```
+expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h
+error: 'RuntimeScheduler' cannot be annotated with either
+SWIFT_RETURNS_RETAINED or SWIFT_RETURNS_UNRETAINED because it is not
+returning a SWIFT_SHARED_REFERENCE type
+```
+
+`expo-modules-jsi` is pinned to 57.0.5 — the latest published, and already
+carrying a fix for a *different* Swift 6.2 incompatibility this project hit
+(`abs()` was ambiguous, replaced by `.magnitude`). This one is not fixed yet.
+Nothing in this repository can resolve it.
+
+The build job therefore runs **weekly rather than per-push**: a workflow that
+always fails only teaches people to ignore failures, and weekly is enough to
+notice the week it starts passing.
+
+**None of this blocks shipping**, because the iPhone route is the web app added
+to the Home Screen from Safari — and that path IS verified on every push by
+`scripts/ios-web-check.mjs`, which drives WebKit under an iPhone profile.
+
+
 ## 7. Summary of binding decisions
 
 1. Use the SDK 57 class-based contacts API, behind our own port.

@@ -24,9 +24,13 @@ No backend. No account. No network requests. Your contacts never leave your devi
 your phone. Android asks you to allow installing from your browser; allow it once.
 
 **iPhone** — open the web app in Safari and tap **Add to Home Screen** at the bottom of the page;
-it walks you through Safari's Share menu. There is no native iOS build: Apple does not permit
-sideloading, so an iPhone app has to go through TestFlight or the App Store, and both need a paid
-Apple Developer account. This is a platform restriction, not something left undone.
+it walks you through Safari's Share menu.
+
+There is no native iOS build, for two separate reasons. Apple does not permit sideloading, so an
+iPhone app has to go through TestFlight or the App Store and both need a paid Apple Developer
+account — a policy limit, not something left undone. And the iOS target does not currently compile
+at all: a dependency's C++ headers fail against every Xcode available, which is an upstream bug
+rather than one this project can fix. Both are written up in `docs/PLATFORM.md` §6.1.
 
 **Desktop** — open the web app in any browser and use the **Install app** button at the bottom of
 the page. Chrome and Edge also show an install icon in the address bar.

@@ -25,19 +25,40 @@ name: Build iOS
 #
 # Built unsigned for the simulator, which is the only way to compile without a
 # certificate.
+#
+# CURRENT STATE: FAILING, and the cause is upstream.
+#
+#   expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h
+#   error: 'RuntimeScheduler' cannot be annotated with either
+#   SWIFT_RETURNS_RETAINED or SWIFT_RETURNS_UNRETAINED because it is not
+#   returning a SWIFT_SHARED_REFERENCE type
+#
+# Established over five builds rather than assumed:
+#
+#   Xcode 16.4 (runner default)  package resolution fails - Swift 6.1, and
+#                                Expo's `apple` package needs swift-tools 6.2
+#   Xcode 26.0.1                 the interop errors above, PLUS eight
+#                                "'weak' must be a mutable variable" errors
+#   Xcode 26.3                   only the interop errors - closest to compiling
+#   Release and Debug            identical, so not a build-settings choice
+#
+# expo-modules-jsi 57.0.5 is the latest published version, and it already fixed
+# one Swift 6.2 incompatibility this project hit (abs() -> .magnitude). This one
+# is not fixed yet. Nothing in this repository can resolve it: the failure is in
+# a dependency's own C++ headers.
+#
+# This does not block anything shipping. Installing on an iPhone requires a paid
+# Apple Developer account regardless, and the iPhone route today is the web app
+# via Add to Home Screen, which IS verified on every push in WebKit.
+# See docs/PLATFORM.md section 7.
 
+# Weekly rather than per-push, because this is currently BLOCKED UPSTREAM and a
+# workflow that always fails just teaches people to ignore failures. Weekly is
+# enough to notice the week Expo or Xcode fixes it; dispatch is there for
+# checking a fix immediately.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'app/**'
-      - 'src/**'
-      - 'plugins/**'
-      - 'app.json'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/build-ios.yml'
-  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 concurrency:
