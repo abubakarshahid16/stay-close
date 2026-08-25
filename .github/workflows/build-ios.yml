@@ -118,10 +118,22 @@ jobs:
             tail -150 xcodebuild.log
             echo "::endgroup::"
 
-            grep -E "error:|fatal error:|The following build commands failed" xcodebuild.log \
-              | head -20 | while IFS= read -r LINE; do
-                  echo "::error::$(printf '%s' "$LINE" | cut -c1-400)"
-                done
+            # Context, not just the marker line. "Could not resolve package
+            # dependencies:" ends in a colon and the real reason is on the lines
+            # AFTER it, so grepping for markers alone reports the category and
+            # hides the cause - the same way the Gradle capture failed until it
+            # was widened to a range.
+            {
+              grep -A 6 -E "Could not resolve package dependencies|xcodebuild: error" xcodebuild.log | head -40
+              grep -E "error:|fatal error:|The following build commands failed" xcodebuild.log | head -20
+            } > reason.txt || true
+
+            [ -s reason.txt ] || tail -60 xcodebuild.log > reason.txt
+
+            while IFS= read -r LINE; do
+              CLEAN=$(printf %s "$LINE" | cut -c1-400)
+              [ -n "$CLEAN" ] && echo "::error::${CLEAN}"
+            done < reason.txt
             exit 1
           fi
 
