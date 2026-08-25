@@ -27,6 +27,7 @@ import {
   Subheading,
 } from '../src/ui/basics';
 import type { ReminderView } from '../src/usecases/reminders/ReminderUseCases';
+import type { NotificationPermission } from '../src/ports/NotificationScheduler';
 import { isErr } from '../src/domain/shared/Result';
 import type { ReminderId } from '../src/domain/shared/ids';
 
@@ -42,6 +43,7 @@ export default function HomeScreen() {
   const [views, setViews] = useState<ReminderView[] | null>(null);
   const [groupCount, setGroupCount] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationPermission | null>(null);
 
   const load = useCallback(async () => {
     const [pending, groups] = [
@@ -50,6 +52,15 @@ export default function HomeScreen() {
     ];
     setViews(pending);
     setGroupCount(groups.length);
+
+    // Checked on every focus rather than once: the user may have changed it in
+    // Settings and come back, and a stale "notifications are off" warning is
+    // worse than none.
+    try {
+      setNotifications(await app.notificationsProvider.permission());
+    } catch {
+      setNotifications(null);
+    }
   }, [app]);
 
   // Reload on focus: returning from creating a group or adding people must not
@@ -59,6 +70,50 @@ export default function HomeScreen() {
       void load();
     }, [load])
   );
+
+  /**
+   * Shown when reminders cannot actually reach the user.
+   *
+   * Without this the app fails silently: ReconcileNotifications skips
+   * scheduling when the permission is not granted, so reminders simply never
+   * arrive and nothing on screen says why. The in-app list still works, which
+   * is the intended degradation — but it has to be stated, not assumed.
+   */
+  const NotificationWarning = () => {
+    if (notifications === null || notifications.state === 'granted') return null;
+
+    const terminal = !notifications.canAskAgain;
+    return (
+      <Card>
+        <Subheading>Reminders will not notify you</Subheading>
+        <Body dim>
+          {terminal
+            ? 'Notifications are turned off for Stay Close. You can turn them on in your device Settings. Until then, open the app to see who is due.'
+            : 'Stay Close needs permission to send notifications. Without it, reminders only appear when you open the app.'}
+        </Body>
+        {terminal ? null : (
+          <>
+            <Spacer />
+            <Button
+              label="Turn on notifications"
+              variant="primary"
+              onPress={() => {
+                void (async () => {
+                  try {
+                    await app.notificationsProvider.request();
+                  } finally {
+                    await load();
+                    // Schedule anything that is already pending.
+                    await app.notifications.run();
+                  }
+                })();
+              }}
+            />
+          </>
+        )}
+      </Card>
+    );
+  };
 
   const resolve = useCallback(
     async (action: 'complete' | 'skip' | 'deprioritize', id: ReminderId) => {
@@ -171,6 +226,7 @@ export default function HomeScreen() {
     return (
       <Screen>
         <Heading>Nobody to reach out to</Heading>
+        <NotificationWarning />
         <Body>You are up to date. Stay Close will let you know when someone is due.</Body>
         <Spacer />
         <Button label="Your groups" onPress={() => router.push('/groups')} />
@@ -181,6 +237,8 @@ export default function HomeScreen() {
   return (
     <Screen>
       <Heading>Reach out to</Heading>
+
+      <NotificationWarning />
 
       {views.map((view) => (
         <View key={String(view.reminder.id)}>

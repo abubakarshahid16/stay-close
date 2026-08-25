@@ -83,6 +83,27 @@ export default function CreateGroupScreen() {
         return;
       }
 
+      // Ask for notification permission here, at the one moment the user has
+      // unambiguously asked to be reminded of something.
+      //
+      // Nothing asked at all before this. ReconcileNotifications checks the
+      // permission and quietly skips scheduling when it is not granted, and on
+      // Android 13+ POST_NOTIFICATIONS starts denied until requested — so
+      // reminders could never fire, and the app sat permanently in the
+      // in-app-only degradation that was designed for someone who had DECLINED.
+      //
+      // Failure is deliberately ignored: a schedule that exists without
+      // notifications still works through the in-app list, and the home screen
+      // says so.
+      try {
+        const current = await app.notificationsProvider.permission();
+        if (current.state !== 'granted' && current.canAskAgain) {
+          await app.notificationsProvider.request();
+        }
+      } catch {
+        // Nothing to do here; the home screen surfaces the resulting state.
+      }
+
       // Straight into adding people — an empty group does nothing.
       router.replace(`/groups/${group.value.id}/add`);
     } finally {

@@ -37,6 +37,16 @@ export interface Container {
   readonly uow: UnitOfWork;
   readonly clock: Clock;
   readonly contactsProvider: ContactProvider;
+  /**
+   * The raw scheduler, exposed so the UI can ask for notification permission.
+   *
+   * Nothing used to expose it, so nothing ever called request(): the app only
+   * ever CHECKED the permission, and ReconcileNotifications quietly skipped
+   * scheduling when it was not granted. On Android 13+ POST_NOTIFICATIONS is a
+   * runtime permission that is denied until asked, so reminders — the entire
+   * point of the product — could never fire.
+   */
+  readonly notificationsProvider: NotificationScheduler;
   readonly communication: CommunicationLauncher;
   readonly groups: GroupUseCases;
   readonly schedules: ScheduleUseCases;
@@ -63,6 +73,7 @@ export function createContainer(adapters: Adapters): Container {
     uow,
     clock: adapters.clock,
     contactsProvider: adapters.contacts,
+    notificationsProvider: adapters.notifications,
     communication: adapters.communication,
     groups: new GroupUseCases(uow, adapters.clock),
     schedules: new ScheduleUseCases(uow, adapters.clock),
