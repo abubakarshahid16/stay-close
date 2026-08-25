@@ -11,7 +11,7 @@ No backend. No account. No network requests. Your contacts never leave your devi
 
 ## Install
 
-<a href="https://github.com/abubakarshahid16/stay-close/releases">
+<a href="https://github.com/abubakarshahid16/stay-close/releases/latest">
   <img src="https://img.shields.io/badge/Download%20APK-Android-brightgreen?style=for-the-badge&logo=android&logoColor=white" alt="Download the Android APK" />
 </a>
 
@@ -20,8 +20,8 @@ No backend. No account. No network requests. Your contacts never leave your devi
   <img src="https://img.shields.io/badge/Open%20Web%20App-Any%20browser-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Open the web app" />
 </a>
 
-**Android** — open the releases page above, download the `.apk` from the newest release, and open
-it on your phone. Android asks you to allow installing from your browser; allow it once.
+**Android** — tap the button above, download the `.apk` at the bottom of that page, and open it on
+your phone. Android asks you to allow installing from your browser; allow it once.
 
 **iPhone** — open the web app in Safari and tap **Add to Home Screen** at the bottom of the page;
 it walks you through Safari's Share menu. There is no native iOS build: Apple does not permit
@@ -54,11 +54,11 @@ intended;** web is good for trying it and for using it at a desk.
 - The APK is a **release build signed with the standard Android debug key**, so it installs
   directly but is not suitable for the Play Store. The signing key is fixed, so updates install
   over the top rather than forcing an uninstall.
-- Releases are marked **pre-release** because the app has not been verified on real hardware.
-  Notification delivery with the app closed, reboot recovery and offline operation are specified
-  in `docs/DEVICE_VERIFICATION.md` and tested in CI, but no one has yet run this on a phone. If
-  reminders do not arrive when the app is closed, that is a known unverified area rather than a
-  surprise — please open an issue with your phone model and Android version.
+- **Not fully verified on real hardware.** Notification delivery with the app closed, reboot
+  recovery and offline operation are specified in `docs/DEVICE_VERIFICATION.md` and exercised in
+  CI, but they have not been confirmed on a physical phone. If reminders do not arrive while the
+  app is closed, that is a known unverified area rather than a surprise — please open an issue
+  with your phone model and Android version.
 - Android 6.0 and later, `arm64-v8a` and `armeabi-v7a`. x86 emulator images are not included.
 
 </details>

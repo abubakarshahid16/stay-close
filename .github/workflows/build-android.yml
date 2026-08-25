@@ -228,9 +228,21 @@ jobs:
         with:
           files: ${{ steps.name.outputs.apk }}
           name: Stay Close ${{ github.ref_name }}
-          # Anything with a hyphen (alpha/beta/rc) is a pre-release. Nothing here
-          # has been verified on real hardware yet, so that is accurate.
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          # Published as a normal release, and explicitly marked latest.
+          #
+          # Marking every build a pre-release was accurate about maturity and
+          # actively harmful in practice. GitHub excludes pre-releases from
+          # /releases/latest, so that URL resolved to the releases LIST rather
+          # than a download, and with no release marked latest the list is
+          # ordered lexicographically by tag - which put alpha.9 above alpha.10
+          # and left the newest build at the bottom, below a broken one. A user
+          # following the README's install button reached the wrong APK.
+          #
+          # "Latest" states which build is current, not that it is finished.
+          # The maturity warnings stay in the release notes below and in the
+          # README, where they are read rather than encoded in a flag.
+          prerelease: false
+          make_latest: true
           body: |
             ## Install on Android
 
