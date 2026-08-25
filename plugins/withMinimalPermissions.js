@@ -64,6 +64,21 @@ const REMOVE = [
   'android.permission.CALL_PHONE',
   'android.permission.SCHEDULE_EXACT_ALARM',
   'android.permission.USE_EXACT_ALARM',
+  // Launcher badge counts on Samsung and some other OEM launchers, pulled in
+  // by a notification dependency. Found by parsing the <uses-permission>
+  // entries out of a published APK: it was the only permission being requested
+  // beyond the three justified ones. This product does not use badges, and
+  // "minimum permissions" is a stated requirement rather than an aspiration.
+  'android.permission.READ_APP_BADGE',
+  // The same badge feature under other OEM vendor names.
+  'com.sec.android.provider.badge.permission.READ',
+  'com.sec.android.provider.badge.permission.WRITE',
+  'com.htc.launcher.permission.READ_SETTINGS',
+  'com.htc.launcher.permission.UPDATE_SHORTCUT',
+  'com.sonyericsson.home.permission.BROADCAST_BADGE',
+  'com.anddoes.launcher.permission.UPDATE_COUNT',
+  'me.everything.badger.permission.BADGE_COUNT_READ',
+  'me.everything.badger.permission.BADGE_COUNT_WRITE',
 ];
 
 const TOOLS_NS = 'http://schemas.android.com/tools';

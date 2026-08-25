@@ -130,6 +130,57 @@ describe('permission enforcement', () => {
   });
 });
 
+describe('permissions found in a real APK', () => {
+  // Regression guard for one that actually shipped.
+  //
+  // v2.0.0-alpha.10 requested android.permission.READ_APP_BADGE. It came from a
+  // notification dependency, it was on nobody's forbidden list, and the CI check
+  // at the time was a blocklist — so it passed. It was found by parsing the
+  // <uses-permission> entries out of the published APK's binary manifest.
+  //
+  // The lasting fix is that CI now asserts an allowlist against the built APK.
+  // This test keeps the plugin side honest too.
+  const BADGE_PERMISSIONS = [
+    'android.permission.READ_APP_BADGE',
+    'com.sec.android.provider.badge.permission.READ',
+    'com.sec.android.provider.badge.permission.WRITE',
+  ];
+
+  it.each(BADGE_PERMISSIONS)('strips %s', (name) => {
+    expect(REMOVED_PERMISSIONS).toContain(name);
+  });
+
+  it('removes a badge permission a dependency declares', () => {
+    const out = enforce({
+      'uses-permission': [perm('android.permission.READ_APP_BADGE')],
+    });
+    expect(requested(out)).not.toContain('android.permission.READ_APP_BADGE');
+    expect(removals(out)).toContain('android.permission.READ_APP_BADGE');
+  });
+
+  // The three the app does justify must survive, or the removals have gone
+  // too far and the app stops working.
+  it('still requests exactly the justified three alongside it', () => {
+    const out = enforce({
+      'uses-permission': [
+        perm('android.permission.READ_APP_BADGE'),
+        perm('android.permission.INTERNET'),
+      ],
+    });
+    expect(requested(out).sort()).toEqual([...JUSTIFIED].sort());
+  });
+
+  // Component-level protections are not requested permissions, and must not be
+  // mistaken for them: BIND_JOB_SERVICE and DUMP both appear in the built
+  // manifest as <service android:permission=...> and <receiver
+  // android:permission=...>, which is correct and must not be "fixed".
+  it('does not try to strip component-level protections', () => {
+    for (const name of ['android.permission.BIND_JOB_SERVICE', 'android.permission.DUMP']) {
+      expect(REMOVED_PERMISSIONS).not.toContain(name);
+    }
+  });
+});
+
 describe('app.json wiring', () => {
   it('runs the plugin last, so it sees every other plugin output', () => {
     const plugins: unknown[] = appJson.expo.plugins;

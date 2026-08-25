@@ -178,27 +178,55 @@ jobs:
           fi
           echo "Using $AAPT"
 
+          # An ALLOWLIST, asserted against the exact set of <uses-permission>
+          # entries. This used to be a blocklist of known-bad names, and that
+          # is exactly how android.permission.READ_APP_BADGE shipped: a
+          # dependency requested it, it was on nobody's forbidden list, and the
+          # check passed. A blocklist can only catch what someone thought of.
+          #
+          # Only "uses-permission:" lines count. aapt also prints "permission:"
+          # for permissions the app DECLARES and component-level protections
+          # like BIND_JOB_SERVICE, which are not permissions the app requests.
           "$AAPT" dump permissions "$APK" > perms.txt
-          echo "--- permissions in the APK ---"
-          grep -oE 'android[.]permission[.][A-Z_]+' perms.txt | sort -u || true
-          echo "------------------------------"
+          grep -oE "^uses-permission: name='[^']+'" perms.txt \
+            | sed -E "s/^uses-permission: name='//; s/'$//" | sort -u > requested.txt
+
+          echo "--- permissions the APK requests ---"
+          cat requested.txt
+          echo "------------------------------------"
+
+          # printf rather than a heredoc: a heredoc terminator has to sit at
+          # column 0, which ends this YAML block scalar and breaks the file.
+          # Built with echo rather than a heredoc or a line-continued printf:
+          # a heredoc terminator must sit at column 0, which would end this
+          # YAML block scalar, and a continued printf is easy to mangle.
+          {
+            echo 'android.permission.POST_NOTIFICATIONS'
+            echo 'android.permission.READ_CONTACTS'
+            echo 'android.permission.RECEIVE_BOOT_COMPLETED'
+          } | sort -u > allowed.txt
 
           FAILED=0
-          FORBIDDEN_LIST="INTERNET WRITE_CONTACTS READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE CALL_PHONE SCHEDULE_EXACT_ALARM USE_EXACT_ALARM ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION CAMERA RECORD_AUDIO READ_CALENDAR GET_ACCOUNTS"
-          for NAME in $FORBIDDEN_LIST; do
-            if grep -qE "android[.]permission[.]${NAME}([^A-Z_]|$)" perms.txt; then
-              echo "::error::${NAME} is present in the built APK. See docs/SECURITY.md section 3."
-              FAILED=1
-            fi
-          done
 
-          REQUIRED_LIST="READ_CONTACTS POST_NOTIFICATIONS RECEIVE_BOOT_COMPLETED"
-          for NAME in $REQUIRED_LIST; do
-            if ! grep -qE "android[.]permission[.]${NAME}([^A-Z_]|$)" perms.txt; then
-              echo "::error::${NAME} is missing from the built APK."
-              FAILED=1
-            fi
-          done
+          EXTRA=$(comm -23 requested.txt allowed.txt)
+          if [ -n "$EXTRA" ]; then
+            while IFS= read -r NAME; do
+              [ -n "$NAME" ] && echo "::error::${NAME} is requested by the APK but is not justified. Add it to ALLOWED in plugins/withMinimalPermissions.js with a reason, or to REMOVE to strip it. See docs/SECURITY.md section 3."
+            done <<< "$EXTRA"
+            FAILED=1
+          fi
+
+          MISSING=$(comm -13 requested.txt allowed.txt)
+          if [ -n "$MISSING" ]; then
+            while IFS= read -r NAME; do
+              [ -n "$NAME" ] && echo "::error::${NAME} is justified but missing from the APK. The app will not work without it."
+            done <<< "$MISSING"
+            FAILED=1
+          fi
+
+          if [ "$FAILED" = "0" ]; then
+            echo "Exactly the three justified permissions, no others."
+          fi
 
           exit $FAILED
 
