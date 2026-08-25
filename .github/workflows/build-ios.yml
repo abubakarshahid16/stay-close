@@ -69,15 +69,36 @@ jobs:
       # Expo's `apple` Swift package declares swift-tools 6.2, which needs Xcode
       # 26 or newer. Selected dynamically rather than pinned, so this does not
       # rot the next time the runner image moves.
-      - name: Select the newest Xcode
+      # Xcode selection is narrower than it looks, and both directions failed.
+      #
+      # The runner default is 16.4, carrying Swift 6.1, and package resolution
+      # fails outright:
+      #
+      #   package 'apple' is using Swift tools version 6.2.0 but the installed
+      #   version is 6.1.0
+      #
+      # Picking the newest instead selected 26.3, which resolves packages and then
+      # fails compiling Expo itself on stricter Swift/C++ interop:
+      #
+      #   'RuntimeScheduler' cannot be annotated with either SWIFT_RETURNS_RETAINED
+      #   or SWIFT_RETURNS_UNRETAINED because it is not returning a
+      #   SWIFT_SHARED_REFERENCE type
+      #
+      # So: the OLDEST Xcode 26, which is the oldest that satisfies swift-tools
+      # 6.2 while adding the fewest new strictness rules for SDK 57 to trip over.
+      # Still chosen by pattern rather than pinned to an exact build, so a runner
+      # image update does not silently break it.
+      - name: Select Xcode
         run: |
-          XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
-          if [ -z "$XCODE" ]; then
-            echo "::error::No Xcode found under /Applications"
-            exit 1
-          fi
           echo "Xcode versions available:"
           ls -d /Applications/Xcode_*.app
+      
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | head -1)
+          if [ -z "$XCODE" ]; then
+            echo "::error::No Xcode 26 on this runner. Expo SDK 57 needs Swift 6.2."
+            exit 1
+          fi
+      
           sudo xcode-select -s "$XCODE/Contents/Developer"
           echo "Selected: $XCODE"
           xcodebuild -version
