@@ -19,9 +19,11 @@
     "verify:web": "npm run build:web && npm run smoke:web && npm run e2e:web && npm run check:ios-web && npm run check:install",
     "icons": "node scripts/generate-icons.mjs",
     "check:ios-web": "node scripts/ios-web-check.mjs",
-    "bundle:android": "node scripts/bundle-android.mjs",
+    "bundle:android": "node scripts/bundle-native.mjs android",
     "check:install": "node scripts/install-button-check.mjs",
-    "ios:expo-go": "expo start --go --tunnel"
+    "ios:expo-go": "expo start --go --tunnel",
+    "bundle:ios": "node scripts/bundle-native.mjs ios",
+    "bundle:native": "npm run bundle:android && npm run bundle:ios"
   },
   "dependencies": {
     "@expo/metro-runtime": "^57.0.13",

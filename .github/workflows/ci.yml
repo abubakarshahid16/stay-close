@@ -57,5 +57,11 @@ jobs:
       # sql.js perfectly well, and the APK workflow was building the debug
       # variant, which skips JS bundling entirely. The first build that
       # actually bundled for Android was the first one to fail.
-      - name: Bundle for Android
-        run: npm run bundle:android
+      #
+      # iOS is covered too, and needs it more: it is not built on every push,
+      # and its native compile is blocked upstream (docs/PLATFORM.md 6.1), so
+      # nothing else would notice the iOS graph breaking. A JS bundle needs no
+      # Xcode, so it runs here on Linux in seconds. It also matters for the free
+      # iPhone route, which runs this exact bundle inside Expo Go.
+      - name: Bundle for Android and iOS
+        run: npm run bundle:native
