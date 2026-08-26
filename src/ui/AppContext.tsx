@@ -156,7 +156,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           clock: new SystemClock(),
           random: new CryptoRandom(),
           contacts: isWeb
-            ? new WebContactProvider()
+            ? new WebContactProvider(deviceCallingCode())
             : new ExpoContactProvider(deviceCallingCode()),
           notifications: isWeb
             ? new WebNotificationScheduler()

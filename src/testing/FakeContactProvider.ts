@@ -106,6 +106,13 @@ export class FakeContactProvider implements ContactProvider {
    * Deliberately ignores the permission state: the whole point of the picker is
    * that it works without one.
    */
+  /** Settable, so a test can model a browser without the Contact Picker API. */
+  pickSupported = true;
+
+  canPick(): boolean {
+    return this.pickSupported;
+  }
+
   async pickOne(): Promise<ResolvedContact | null> {
     this.pickCalls += 1;
     return this.pickResult;

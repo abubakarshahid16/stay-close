@@ -123,6 +123,11 @@ export class ExpoContactProvider implements ContactProvider {
    * is refused, this returns null and the caller falls back to manual entry
    * rather than failing.
    */
+  /** Native platforms always have a system contact picker. */
+  canPick(): boolean {
+    return true;
+  }
+
   async pickOne(): Promise<ResolvedContact | null> {
     try {
       const picked = await Contact.presentPicker();

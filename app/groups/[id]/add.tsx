@@ -323,11 +323,25 @@ export default function AddPeopleScreen() {
           // on screen, it is definitely the web version.
           <>
             <Subheading>This is the web version</Subheading>
-            <Body>
-              The web version cannot read your phone&apos;s contacts. Browsers have no access to an
-              address book, on any phone. That is why you are typing people in by hand, and why it
-              never asks for contacts permission — there is nothing it could ask for.
-            </Body>
+            {app.contactsProvider.canPick() ? (
+              // Chrome on Android implements the Contact Picker API, so this
+              // browser CAN offer a picker even though it cannot read the
+              // address book. Saying "browsers cannot do this" here would be
+              // wrong in front of a user looking at a button that works.
+              <Body>
+                The web version cannot browse your whole address book, but this browser can let you
+                pick people one at a time — the button below opens your own contact list. Reminders
+                still only appear while the app is open; only the Android app can notify you when
+                it is closed.
+              </Body>
+            ) : (
+              <Body>
+                The web version cannot read your phone&apos;s contacts, and this browser has no
+                contact picker either. Safari and every desktop browser are in that position, so you
+                are typing people in by hand — and that is also why it never asks for contacts
+                permission. There is nothing it could ask for.
+              </Body>
+            )}
             <Spacer />
             <Body>
               The Android app can read your contacts, and can remind you while it is closed.
@@ -371,7 +385,7 @@ export default function AddPeopleScreen() {
           </>
         )}
 
-        {noAddressBook ? null : (
+        {app.contactsProvider.canPick() ? (
           <>
             <Spacer />
             <Divider />
@@ -388,7 +402,7 @@ export default function AddPeopleScreen() {
               onPress={() => void pickFromSystem()}
             />
           </>
-        )}
+        ) : null}
 
         <Spacer />
         <ManualPersonForm onAdd={addManually} busy={busy} />

@@ -95,4 +95,15 @@ export interface ContactProvider {
    *   has no picker (a browser has no address book at all).
    */
   pickOne(): Promise<ResolvedContact | null>;
+
+  /**
+   * Whether `pickOne` can actually do anything here.
+   *
+   * Asked at runtime rather than derived from the platform, because on web it
+   * genuinely varies by browser: the Contact Picker API exists in Chrome on
+   * Android and nowhere else. Offering a button that silently does nothing is
+   * worse than not offering it, and hiding it where it WOULD work needlessly
+   * sends people to type numbers by hand.
+   */
+  canPick(): boolean;
 }
