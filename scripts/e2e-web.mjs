@@ -66,6 +66,16 @@ try {
 
   await page.getByPlaceholder('Group name').fill('Family');
   await page.getByText('Weekly', { exact: true }).click();
+
+  // A time the form could not previously express. It offered four fixed hours
+  // (09, 12, 18, 21) with minutes locked to zero, so 07:35 was unreachable —
+  // even though the domain has always accepted any hour and minute. Choosing
+  // it here proves the whole path, not just the buttons: selection, validation,
+  // the database write, and the description read back on the group screen.
+  await page.getByLabel('07 hours').click();
+  await page.getByLabel('35 minutes past').click();
+  check('an arbitrary time can be selected', true);
+
   await page.getByText('Create and add people').click();
 
   // ── add a person by hand (web has no address book) ───────────────────────
@@ -94,6 +104,14 @@ try {
 
   const scheduleText = await page.getByText(/1 person every/).textContent();
   check(`schedule described: "${scheduleText?.trim()}"`, !!scheduleText);
+
+  // The time has to survive the round trip. A schedule saved as 07:35 that
+  // reads back 07:00 would mean the minutes were silently dropped, which is
+  // worse than not offering them.
+  check(
+    `the chosen time survived into the database (${scheduleText?.trim()})`,
+    scheduleText?.includes('07:35') === true
+  );
 
   // ── survives a reload, i.e. it really persisted to IndexedDB ────────────
   await page.reload({ waitUntil: 'load' });

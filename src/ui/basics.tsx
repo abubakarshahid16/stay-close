@@ -79,19 +79,28 @@ export function Button({
   variant = 'default',
   disabled = false,
   accessibilityHint,
+  accessibilityLabel,
 }: {
   label: string;
   onPress: () => void;
   variant?: 'default' | 'primary' | 'quiet';
   disabled?: boolean;
   accessibilityHint?: string;
+  /**
+   * Spoken name, when the visible label is not one on its own.
+   *
+   * The time and day pickers render bare numbers — "07", "15", "45" — which a
+   * screen reader announces without any sense of what they select. Defaults to
+   * the label, so existing buttons are unaffected.
+   */
+  accessibilityLabel?: string;
 }) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled }}
       // 44pt minimum touch target, per platform guidance.

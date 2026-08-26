@@ -26,14 +26,29 @@ import { isErr } from '../../src/domain/shared/Result';
 
 const CADENCES: readonly { value: Cadence; label: string; interval: number }[] = [
   { value: 'daily', label: 'Every day', interval: 1 },
-  { value: 'every_x_days', label: 'Every 3 days', interval: 3 },
+  { value: 'every_x_days', label: 'Every few days', interval: 3 },
   { value: 'weekly', label: 'Weekly', interval: 1 },
-  { value: 'every_x_weeks', label: 'Every 2 weeks', interval: 2 },
+  { value: 'every_x_weeks', label: 'Every few weeks', interval: 2 },
   { value: 'monthly', label: 'Monthly', interval: 1 },
 ];
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const TIMES = [9, 12, 18, 21];
+/**
+ * Every hour, and minutes in five-minute steps.
+ *
+ * This offered four fixed times (09:00, 12:00, 18:00, 21:00) with minutes
+ * locked to zero, which was a UI restriction and nothing more: the domain has
+ * always accepted any hour 0-23 and any minute 0-59
+ * (src/domain/schedule/cadence.ts). Someone who wants a reminder at 07:30
+ * could not ask for one.
+ */
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
+
+/** Days of the month. Also previously a subset — 1, 5, 10, 15, 20, 25, 28, 31. */
+const MONTH_DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
+
+const two = (n: number) => String(n).padStart(2, '0');
 
 export default function CreateGroupScreen() {
   const app = useContainer();
@@ -43,6 +58,8 @@ export default function CreateGroupScreen() {
   const [weekday, setWeekday] = useState(0);
   const [monthDay, setMonthDay] = useState(1);
   const [hour, setHour] = useState(21);
+  const [minute, setMinute] = useState(0);
+  const [interval, setInterval] = useState(3);
   const [peoplePerCycle, setPeoplePerCycle] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -50,6 +67,9 @@ export default function CreateGroupScreen() {
   const cadence = CADENCES[cadenceIndex];
   const needsWeekday = cadence.value === 'weekly' || cadence.value === 'every_x_weeks';
   const needsMonthDay = cadence.value === 'monthly';
+  const needsInterval =
+    cadence.value === 'every_x_days' || cadence.value === 'every_x_weeks';
+  const intervalUnit = cadence.value === 'every_x_days' ? 'days' : 'weeks';
 
   async function submit() {
     setError(null);
@@ -65,11 +85,11 @@ export default function CreateGroupScreen() {
         groupId: group.value.id,
         peoplePerCycle,
         cadence: cadence.value,
-        intervalCount: cadence.interval,
+        intervalCount: needsInterval ? interval : cadence.interval,
         weekday: needsWeekday ? weekday : null,
         monthDay: needsMonthDay ? monthDay : null,
         hour,
-        minute: 0,
+        minute,
       });
 
       if (isErr(schedule)) {
@@ -135,10 +155,38 @@ export default function CreateGroupScreen() {
             key={option.value + String(index)}
             label={option.label}
             variant={index === cadenceIndex ? 'primary' : 'default'}
-            onPress={() => setCadenceIndex(index)}
+            onPress={() => {
+              setCadenceIndex(index);
+              // Sensible starting point per unit, still adjustable below.
+              if (CADENCES[index].value === 'every_x_days') setInterval(3);
+              if (CADENCES[index].value === 'every_x_weeks') setInterval(2);
+            }}
           />
         ))}
       </View>
+
+      {needsInterval ? (
+        <>
+          <Subheading>How many {intervalUnit}</Subheading>
+          <View style={styles.row}>
+            <Button
+              label="−"
+              accessibilityLabel={`One fewer ${intervalUnit}`}
+              disabled={interval <= 1}
+              onPress={() => setInterval((n) => Math.max(1, n - 1))}
+            />
+            <Body>
+              Every {interval} {interval === 1 ? intervalUnit.slice(0, -1) : intervalUnit}
+            </Body>
+            <Button
+              label="+"
+              accessibilityLabel={`One more ${intervalUnit}`}
+              disabled={interval >= 52}
+              onPress={() => setInterval((n) => Math.min(52, n + 1))}
+            />
+          </View>
+        </>
+      ) : null}
 
       {needsWeekday ? (
         <>
@@ -160,7 +208,7 @@ export default function CreateGroupScreen() {
         <>
           <Subheading>Day of the month</Subheading>
           <View style={styles.wrap}>
-            {[1, 5, 10, 15, 20, 25, 28, 31].map((day) => (
+            {MONTH_DAYS.map((day) => (
               <Button
                 key={day}
                 label={String(day)}
@@ -178,13 +226,35 @@ export default function CreateGroupScreen() {
       ) : null}
 
       <Subheading>What time</Subheading>
+      <Body>
+        Reminders will arrive at{' '}
+        <Body>
+          {two(hour)}:{two(minute)}
+        </Body>
+      </Body>
+
+      <Body dim>Hour</Body>
       <View style={styles.wrap}>
-        {TIMES.map((value) => (
+        {HOURS.map((value) => (
           <Button
-            key={value}
-            label={`${String(value).padStart(2, '0')}:00`}
+            key={`h${value}`}
+            label={two(value)}
+            accessibilityLabel={`${two(value)} hours`}
             variant={value === hour ? 'primary' : 'default'}
             onPress={() => setHour(value)}
+          />
+        ))}
+      </View>
+
+      <Body dim>Minutes</Body>
+      <View style={styles.wrap}>
+        {MINUTES.map((value) => (
+          <Button
+            key={`m${value}`}
+            label={two(value)}
+            accessibilityLabel={`${two(value)} minutes past`}
+            variant={value === minute ? 'primary' : 'default'}
+            onPress={() => setMinute(value)}
           />
         ))}
       </View>
