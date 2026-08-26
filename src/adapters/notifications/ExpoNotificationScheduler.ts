@@ -29,7 +29,25 @@ import { instant, reminderId, type Instant, type ReminderId } from '../../domain
 /** Prefix so our notifications are distinguishable from anything else. */
 const ID_PREFIX = 'stay-close-reminder-';
 
-const ANDROID_CHANNEL_ID = 'reminders';
+/**
+ * Versioned deliberately.
+ *
+ * The first channel was created with AndroidImportance.DEFAULT, which shows a
+ * notification in the shade but never as a heads-up banner. Android does NOT
+ * let an app raise the importance of a channel that already exists —
+ * createNotificationChannel updates the name and description of an existing
+ * channel and ignores the importance, because that setting belongs to the user
+ * once they have it.
+ *
+ * So correcting the importance in code does nothing for anyone who has already
+ * opened the app: they keep the quiet channel forever. A new id creates a new
+ * channel at the right importance.
+ *
+ * The old 'reminders' channel is deleted on first run so it does not linger in
+ * system settings as a dead duplicate.
+ */
+const ANDROID_CHANNEL_ID = 'reminders-v2';
+const RETIRED_ANDROID_CHANNEL_IDS = ['reminders'];
 
 export function notificationIdFor(id: ReminderId): string {
   return `${ID_PREFIX}${id}`;
@@ -41,7 +59,55 @@ export function reminderIdFrom(identifier: string): ReminderId | null {
   return Number.isInteger(raw) && raw > 0 ? reminderId(raw) : null;
 }
 
+/**
+ * How a notification is presented when it arrives while the app is OPEN.
+ *
+ * Nothing set this, and the consequence was total: expo-notifications states
+ * "for the notification to be presented you have to set a notification handler
+ * with setNotificationHandler", and with none set it silently swallows every
+ * notification that arrives in the foreground. Tapping "Send a test reminder"
+ * produced nothing at all — and a real reminder firing while the app was open
+ * would have been invisible too.
+ *
+ * `shouldPlaySound` must be true on Android, however quiet a relationship nudge
+ * ought to be. From the installed type definitions:
+ *
+ *   "On Android, setting shouldPlaySound: false will result in the drop-down
+ *    notification alert NOT showing, no matter what the priority is."
+ *
+ * A silent notification that never appears is not a gentler reminder; it is no
+ * reminder. The channel governs how insistent it actually is.
+ */
+export const FOREGROUND_BEHAVIOUR = {
+  shouldShowBanner: true,
+  shouldShowList: true,
+  shouldPlaySound: true,
+  // No badge: the in-app list is the system of record, and a stale count is
+  // worse than none.
+  shouldSetBadge: false,
+} as const;
+
+let handlerConfigured = false;
+
+/**
+ * Registers foreground presentation once per process.
+ *
+ * Called from the constructor rather than at module load, so importing this
+ * file has no side effect and the web build never touches it.
+ */
+function configureForegroundPresentation(): void {
+  if (handlerConfigured) return;
+  handlerConfigured = true;
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({ ...FOREGROUND_BEHAVIOUR }),
+  });
+}
+
 export class ExpoNotificationScheduler implements NotificationScheduler {
+  constructor() {
+    configureForegroundPresentation();
+  }
+
   private channelReady = false;
 
   async permission(): Promise<NotificationPermission> {
@@ -158,11 +224,30 @@ export class ExpoNotificationScheduler implements NotificationScheduler {
     if (this.channelReady || Platform.OS !== 'android') return;
     await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
       name: 'Reminders',
-      importance: Notifications.AndroidImportance.DEFAULT,
-      // No vibration or sound override: a relationship nudge is not urgent.
+      // HIGH, not DEFAULT. DEFAULT places a notification in the shade without
+      // ever showing a heads-up banner, so a reminder could arrive and be seen
+      // only by someone who happened to pull the shade down. The whole point is
+      // to be noticed at the moment it fires.
+      //
+      // HIGH is still not FULL_SCREEN or an alarm: no full-screen intent, no
+      // bypassing Do Not Disturb. The user can turn the channel down in system
+      // settings, which is the right place for that choice.
+      importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: undefined,
       sound: undefined,
     });
+
+    // Remove the superseded channel, or it sits in system settings as a second
+    // "Reminders" entry that no longer does anything.
+    for (const retired of RETIRED_ANDROID_CHANNEL_IDS) {
+      try {
+        await Notifications.deleteNotificationChannelAsync(retired);
+      } catch {
+        // Never created on this device, already gone, or the platform refused.
+        // None of those should stop the app from scheduling.
+      }
+    }
+
     this.channelReady = true;
   }
 }
