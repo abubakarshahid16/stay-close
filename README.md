@@ -11,6 +11,18 @@ No backend. No account. No network requests. Your contacts never leave your devi
 
 ## Install
 
+<a href="https://github.com/abubakarshahid16/stay-close/releases/latest">
+  <img src="https://img.shields.io/badge/Android-Download%20the%20app-brightgreen?style=for-the-badge&logo=android&logoColor=white" alt="Download the Android app" />
+</a>
+&nbsp;
+<a href="https://abubakarshahid16.github.io/stay-close">
+  <img src="https://img.shields.io/badge/iPhone-Install%20via%20Safari-black?style=for-the-badge&logo=apple&logoColor=white" alt="Install on iPhone" />
+</a>
+&nbsp;
+<a href="https://abubakarshahid16.github.io/stay-close">
+  <img src="https://img.shields.io/badge/Computer-Open%20web%20app-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Open the web app" />
+</a>
+
 **One codebase. Three ways to run it.** Pick the row that matches your device.
 
 | Your device | What to install | Contacts | Reminders when closed |
@@ -26,10 +38,41 @@ No backend. No account. No network requests. Your contacts never leave your devi
 3. Open it. Android asks once for permission to install from your browser — allow it
 4. Updates install over the top. Your data is kept, no uninstall needed
 
-### iPhone — the web app, and why there is no iOS app
+### iPhone — step by step
 
-Open the link in **Safari**, then **Share → Add to Home Screen**. It gets an icon and opens
-full screen.
+**Option 1 — install to the Home Screen (1 minute, nothing to pay)**
+
+1. Open <https://abubakarshahid16.github.io/stay-close> **in Safari** (it must be Safari — Chrome
+   on iOS cannot add to the Home Screen)
+2. Tap the **Share** button — the square with an arrow, in the toolbar
+3. Scroll down and tap **Add to Home Screen**
+4. Tap **Add**
+
+You get an icon that opens full screen like any app. The app itself shows an **Add to Home Screen**
+button at the bottom of the page that walks you through the same steps.
+
+*What works:* groups, schedules, fair rotation, the reminder list, history, and your data kept on
+the device. *What does not:* reading your contacts, and reminders while the app is closed — both are
+browser limits that apply to every website on every phone, not gaps in this app.
+
+**Option 2 — run the full app, with contacts and notifications (free, needs a computer)**
+
+Every native dependency here is bundled in **Expo Go**, so the real app runs on an iPhone with no
+custom build — all 15 checked against Expo's own manifest.
+
+1. On a computer, clone this repository and run `npm install`
+2. Run `npm run ios:expo-go`
+3. Install **Expo Go** free from the App Store
+4. Scan the QR code from your terminal with the iPhone camera
+
+This is the **full** app: real contacts access, real local notifications. The catch is that it needs
+Expo Go installed and your computer running the dev server — close the terminal and it stops. Good
+for using it yourself, not for sharing with other people.
+
+**Option 3 — a real installable app, one link, anyone**
+
+Needs a **paid Apple Developer account ($99/year)** and TestFlight. See below for why there is no
+free version of this.
 
 An iPhone app cannot be distributed without a **paid Apple Developer account ($99/year)**. Apple
 allows installation only via the App Store, TestFlight, or ad-hoc provisioning, and all three
