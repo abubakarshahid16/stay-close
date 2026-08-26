@@ -135,6 +135,13 @@ describe('outbound URLs', () => {
       // in that position are names, never fetched — the merger resolves them
       // locally and no HTTP request is ever made.
       'http://schemas.android.com/',
+      // The download page for the Android app, handed to the OS browser by
+      // Linking.openURL — the same category as the wa.me deep link, not a
+      // request this app makes. It appears in exactly one place: the message
+      // shown when the contacts provider reports 'unavailable', which only the
+      // WEB provider ever does. So it cannot even render in the Android app,
+      // which has no INTERNET permission to make a request with.
+      'https://github.com/abubakarshahid16/stay-close/releases',
     ];
     const offenders: string[] = [];
 

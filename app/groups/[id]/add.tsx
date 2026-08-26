@@ -13,6 +13,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, AppState, Platform, TextInput, StyleSheet, View } from 'react-native';
 import * as Localization from 'expo-localization';
+import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useContainer } from '../../../src/ui/AppContext';
 import {
@@ -24,6 +25,7 @@ import {
   Loading,
   Screen,
   Spacer,
+  Subheading,
 } from '../../../src/ui/basics';
 import { ManualPersonForm } from '../../../src/ui/ManualPersonForm';
 import { canOpenAppSettings, openAppSettings } from '../../../src/ui/openAppSettings';
@@ -59,7 +61,7 @@ export default function AddPeopleScreen() {
     (state: string, canAsk: boolean, listed: number) => {
       setDiagnostics([
         `platform: ${Platform.OS} ${Platform.Version}`,
-        `provider: ${app.contactsProvider.constructor.name}`,
+        `provider: ${app.contactsProvider.kind}`,
         `permission: ${state}`,
         `can ask again: ${canAsk}`,
         `contacts returned: ${listed}`,
@@ -188,6 +190,18 @@ export default function AddPeopleScreen() {
     );
   };
 
+  /** Opens the download page for the real Android app. */
+  async function openReleasesPage() {
+    try {
+      await Linking.openURL('https://github.com/abubakarshahid16/stay-close/releases/latest');
+    } catch {
+      Alert.alert(
+        'Could not open the link',
+        'Go to github.com/abubakarshahid16/stay-close/releases and download the .apk file.'
+      );
+    }
+  }
+
   async function request() {
     const result = await app.contactsProvider.request();
     setPermission(result.state);
@@ -297,10 +311,36 @@ export default function AddPeopleScreen() {
         <Heading>Add people</Heading>
 
         {noAddressBook ? (
-          <Body>
-            This browser has no address book for Stay Close to read, so people are added by hand
-            here. On a phone you can pick them straight from your contacts.
-          </Body>
+          // Wording matters more than it looks here. This said "This browser
+          // has no address book", and someone who added the web app to their
+          // home screen does not think of it as a browser — it has an icon and
+          // opens full screen like any app. So "contacts do not load and it
+          // never asks for permission" read as a bug in the Android app, when
+          // it is the web version behaving exactly as designed.
+          //
+          // This state is reachable ONLY from WebContactProvider:
+          // ExpoContactProvider never reports 'unavailable'. So if this text is
+          // on screen, it is definitely the web version.
+          <>
+            <Subheading>This is the web version</Subheading>
+            <Body>
+              The web version cannot read your phone&apos;s contacts. Browsers have no access to an
+              address book, on any phone. That is why you are typing people in by hand, and why it
+              never asks for contacts permission — there is nothing it could ask for.
+            </Body>
+            <Spacer />
+            <Body>
+              The Android app can read your contacts, and can remind you while it is closed.
+            </Body>
+            <Spacer />
+            <Button
+              label="Get the Android app"
+              variant="primary"
+              onPress={() => void openReleasesPage()}
+            />
+            <Spacer />
+            <Divider />
+          </>
         ) : (
           <>
             <Body>

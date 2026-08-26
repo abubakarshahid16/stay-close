@@ -49,6 +49,17 @@ export interface ListContactsOptions {
 }
 
 export interface ContactProvider {
+  /**
+   * Which implementation this is, for on-device diagnostics.
+   *
+   * Explicit rather than read from `constructor.name`, because a production
+   * bundle minifies class names: the first version of the diagnostics panel
+   * reported `provider: n`, which is exactly as useful as reporting nothing.
+   * Knowing whether a phone is running the native or web provider is the
+   * difference between two completely different bugs.
+   */
+  readonly kind: 'native' | 'web' | 'fake';
+
   permission(): Promise<ContactPermission>;
   request(): Promise<ContactPermission>;
 

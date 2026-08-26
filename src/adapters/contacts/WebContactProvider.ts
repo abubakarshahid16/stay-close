@@ -23,6 +23,8 @@ import type {
 import type { NativeContactId } from '../../domain/shared/ids';
 
 export class WebContactProvider implements ContactProvider {
+  readonly kind = 'web' as const;
+
   async permission(): Promise<ContactPermission> {
     // Not 'denied': nothing was refused, and offering a "grant access" button
     // that cannot work would be worse than saying the capability is absent.

@@ -43,6 +43,8 @@ interface DetailsShape {
 }
 
 export class ExpoContactProvider implements ContactProvider {
+  readonly kind = 'native' as const;
+
   /**
    * @param defaultCallingCode Region for normalising national-format numbers.
    *   Derived from device locale by the caller; without it, national numbers

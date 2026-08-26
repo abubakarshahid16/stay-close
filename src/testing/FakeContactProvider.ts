@@ -23,6 +23,8 @@ export interface FakeContactSeed {
 }
 
 export class FakeContactProvider implements ContactProvider {
+  readonly kind = 'fake' as const;
+
   pickCalls = 0;
   private pickResult: ResolvedContact | null = null;
 
