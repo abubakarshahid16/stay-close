@@ -11,63 +11,44 @@ No backend. No account. No network requests. Your contacts never leave your devi
 
 ## Install
 
-<a href="https://github.com/abubakarshahid16/stay-close/releases/latest">
-  <img src="https://img.shields.io/badge/Download%20APK-Android-brightgreen?style=for-the-badge&logo=android&logoColor=white" alt="Download the Android APK" />
-</a>
+**One codebase. Three ways to run it.** Pick the row that matches your device.
 
-&nbsp;
-<a href="https://abubakarshahid16.github.io/stay-close">
-  <img src="https://img.shields.io/badge/Open%20Web%20App-Any%20browser-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Open the web app" />
-</a>
+| Your device | What to install | Contacts | Reminders when closed |
+|---|---|:---:|:---:|
+| **Android phone** | [**Download the app (.apk)**](https://github.com/abubakarshahid16/stay-close/releases/latest) | Yes | Yes |
+| **iPhone / iPad** | [Open the web app](https://abubakarshahid16.github.io/stay-close) → Share → Add to Home Screen | No | No |
+| **Computer** | [Open the web app](https://abubakarshahid16.github.io/stay-close) → Install app | No | No |
 
-**Android** — tap the button above, download the `.apk` at the bottom of that page, and open it on
-your phone. Android asks you to allow installing from your browser; allow it once.
+### Android — the full app
 
-**iPhone** — open the web app in Safari and tap **Add to Home Screen** at the bottom of the page;
-it walks you through Safari's Share menu.
+1. Open the [releases page](https://github.com/abubakarshahid16/stay-close/releases/latest) **on your phone**
+2. Download the `.apk` at the bottom of that page
+3. Open it. Android asks once for permission to install from your browser — allow it
+4. Updates install over the top. Your data is kept, no uninstall needed
 
-There is no native iOS build, for two separate reasons. Apple does not permit sideloading, so an
-iPhone app has to go through TestFlight or the App Store and both need a paid Apple Developer
-account — a policy limit, not something left undone. And the iOS target does not currently compile
-at all: a dependency's C++ headers fail against every Xcode available, which is an upstream bug
-rather than one this project can fix. Both are written up in `docs/PLATFORM.md` §6.1.
+### iPhone — the web app, and why there is no iOS app
 
-**Desktop** — open the web app in any browser and use the **Install app** button at the bottom of
-the page. Chrome and Edge also show an install icon in the address bar.
+Open the link in **Safari**, then **Share → Add to Home Screen**. It gets an icon and opens
+full screen.
 
-The button appears on its own once the browser considers the app installable, and disappears once
-it is installed. Safari never fires an install prompt at all, so on an iPhone the button shows the
-Add to Home Screen steps instead of pretending it can do it for you.
+An iPhone app cannot be distributed without a **paid Apple Developer account ($99/year)**. Apple
+allows installation only via the App Store, TestFlight, or ad-hoc provisioning, and all three
+require that membership and a signing certificate. There is no iPhone equivalent of downloading an
+APK, in any framework — Flutter, React Native or native Swift all hit the same wall, because it is
+Apple's policy and not a technical limit. See `docs/PLATFORM.md` §6.1.
 
-### What works where
+> ### ⚠️ The web app and the Android app look identical once installed
+>
+> Both get an icon and open full screen. They are **different apps with separate data**, and
+> nothing syncs between them — by design, since there is no server.
+>
+> **The web app cannot read your contacts and never asks for permission.** No browser can, on any
+> phone. If you are typing people in by hand and wondering why it never asks, you are in the web
+> app — install the Android one.
+>
+> **How to tell:** open *Add people*. It prints `provider: native` or `provider: web` at the
+> bottom of the screen.
 
-Web is limited by two hard browser restrictions, not by unfinished work:
-
-| | Android app | Web / iPhone |
-|---|---|---|
-| Pick people from your contacts | Yes | **No** — browsers have no address book, so you type people in |
-| Reminders while the app is closed | Yes | **No** — browsers cannot schedule those without a server |
-
-Groups, schedules, fair rotation, the whole reminder lifecycle and history all work on web. You
-just see due reminders when you open it rather than being nudged. **A phone is where it works as
-intended;** web is good for trying it and for using it at a desk.
-
-<details>
-<summary><strong>Read this before installing</strong></summary>
-
-- The APK is a **release build signed with the standard Android debug key**, so it installs
-  directly but is not suitable for the Play Store. The signing key is fixed, so updates install
-  over the top rather than forcing an uninstall.
-- **Not fully verified on real hardware.** Notification delivery with the app closed, reboot
-  recovery and offline operation are specified in `docs/DEVICE_VERIFICATION.md` and exercised in
-  CI, but they have not been confirmed on a physical phone. If reminders do not arrive while the
-  app is closed, that is a known unverified area rather than a surprise — please open an issue
-  with your phone model and Android version.
-- Android 6.0 and later, `arm64-v8a` and `armeabi-v7a`. x86 emulator images are not included.
-
-</details>
-
----
 
 ## Status
 
