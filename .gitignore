@@ -34,3 +34,4 @@ coverage/
 # Screenshot written by scripts/ios-web-check.mjs
 ios-web-check.png
 install-button-ios.png
+web-version-message.png
