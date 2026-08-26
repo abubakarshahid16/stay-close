@@ -78,10 +78,12 @@ intended;** web is good for trying it and for using it at a desk.
 | Android APK | Built and published on every `v*.*.*` tag |
 | Web app | Deployed to GitHub Pages, exercised in Chromium and WebKit on every push |
 | Screens | Functional, deliberately plain. Phase A is utilitarian; visual design is Phase B |
-| On-device verification | **Not done** — see `docs/DEVICE_VERIFICATION.md` |
+| On-device verification | **Partial** — install, launch, contacts permission and address book confirmed on Android hardware. Notification delivery while closed, reboot recovery and offline operation still unverified: `docs/DEVICE_VERIFICATION.md` |
 
-That last row is the honest gap: the logic is tested and the builds are exercised in CI, but the
-app has not been run on a physical phone.
+That last row is the honest gap. The app now demonstrably installs, launches and reads contacts on
+a real Android phone. What remains unverified is everything that needs the OS to act while the app
+is closed — notification delivery, reboot recovery, offline behaviour — and none of that can be
+established from CI.
 
 
 ## The problem

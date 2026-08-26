@@ -32,6 +32,45 @@ unverified is the platform's side of each contract.
 
 ---
 
+## 0.1 Confirmed on a physical Android device
+
+Recorded because the difference between "specified" and "observed" is the whole
+point of this document.
+
+| Behaviour | Status |
+|---|---|
+| The APK installs from the release link | **Confirmed** |
+| The app launches and opens its database | **Confirmed** |
+| The contacts permission prompt appears | **Confirmed** |
+| The address book loads and is selectable | **Confirmed** |
+| Notification delivery with the app closed | Not yet — section 3 |
+| Reboot recovery | Not yet — section 4 |
+| Offline operation | Not yet |
+
+### What made contacts look broken for a long time, and was not
+
+Repeated reports of "no contacts and it never asks for permission" came from the
+**web version** added to the Home Screen, not the Android app. The two are
+indistinguishable once installed: same icon, same name, opens full screen.
+
+The web build has no address book, cannot ask for contacts permission, and is
+correct to say so — but its message read "This browser has no address book",
+which nobody with an app icon on their home screen connects to their situation.
+
+This is worth remembering before diagnosing anything else on a phone:
+
+- `ExpoContactProvider` never reports `unavailable`; `WebContactProvider`
+  always does. That state is therefore proof of which build is running.
+- The Add People screen prints `provider: native | web` on screen. Read it
+  first.
+
+Two real defects were found while chasing this and are fixed regardless: the
+permission was only requested when the state was `undetermined`, which Android
+stops reporting after the first ask, and the calling-code table covered 34
+regions, so national-format numbers elsewhere were rejected and their contacts
+silently dropped from the picker.
+
+
 ## 1. Build prerequisites
 
 A development build is required — Expo Go cannot carry the config-plugin changes
