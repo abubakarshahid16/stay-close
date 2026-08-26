@@ -21,7 +21,7 @@ jobs:
     name: Lint · Typecheck · Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Node 24: the persistence suite uses the built-in node:sqlite, which is
       # unflagged from Node 23.4. This replaced better-sqlite3, so CI needs no
