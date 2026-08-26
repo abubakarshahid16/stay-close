@@ -476,6 +476,50 @@ to the Home Screen from Safari — and that path IS verified on every push by
 `scripts/ios-web-check.mjs`, which drives WebKit under an iPhone profile.
 
 
+## 6.2 Running the full app on an iPhone for free
+
+There is no free way to *distribute* an iOS app (§6.1). There is a free way to
+*run* this one on an iPhone, with contacts and local notifications working.
+
+Every native dependency this project uses is bundled in **Expo Go**, verified
+against `node_modules/expo/bundledNativeModules.json` — all 15, including
+expo-contacts, expo-notifications, expo-sqlite, reanimated and worklets. So the
+app runs inside Expo Go without a custom native build.
+
+```
+npm run ios:expo-go     # expo start --go --tunnel
+```
+
+The tunnel makes the dev server reachable from any network, so the QR code works
+on a phone that is not on the same Wi-Fi. On the iPhone: install **Expo Go** from
+the App Store, scan the code.
+
+**What this is good for:** trying the real app on an iPhone — actual contacts
+access, actual local notifications — at no cost, today.
+
+**What it is not:** distribution. It needs Expo Go installed, and it needs a
+machine running the dev server. Close the terminal and the link dies. Config
+plugins do not apply either, so `withMinimalPermissions` is not in effect and
+Expo Go's own permission set is used.
+
+### The free permanent-link option, and its cost
+
+A permanent link that loads in Expo Go without a dev server means EAS Update,
+which requires `expo-updates` — described by its own package as fetching
+"remotely-hosted assets and updates to your app's JS bundle".
+
+That is a network-fetching dependency in an app whose central promise is that it
+makes no network requests. On Android the promise would survive in practice,
+since INTERNET is stripped and that is verified against the built APK — the
+dependency would simply be inert. But it is a real change to what this app is,
+and it is not worth making silently for a convenience.
+
+**Not done, deliberately.** The free iPhone routes are the web app (permanent,
+zero friction, no contacts) and Expo Go (full features, needs a running dev
+server). Anything better costs $99/year, and that is Apple's price rather than a
+gap here.
+
+
 ## 7. Summary of binding decisions
 
 1. Use the SDK 57 class-based contacts API, behind our own port.

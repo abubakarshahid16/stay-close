@@ -20,7 +20,8 @@
     "icons": "node scripts/generate-icons.mjs",
     "check:ios-web": "node scripts/ios-web-check.mjs",
     "bundle:android": "node scripts/bundle-android.mjs",
-    "check:install": "node scripts/install-button-check.mjs"
+    "check:install": "node scripts/install-button-check.mjs",
+    "ios:expo-go": "expo start --go --tunnel"
   },
   "dependencies": {
     "@expo/metro-runtime": "^57.0.13",

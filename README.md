@@ -37,6 +37,17 @@ require that membership and a signing certificate. There is no iPhone equivalent
 APK, in any framework — Flutter, React Native or native Swift all hit the same wall, because it is
 Apple's policy and not a technical limit. See `docs/PLATFORM.md` §6.1.
 
+**Free ways to get this onto an iPhone, in order of effort:**
+
+| | What you get | What it costs |
+|---|---|---|
+| Web app → Add to Home Screen | Groups, schedules, rotation, reminders in-app. No contacts, no reminders while closed. | Nothing. Works now. |
+| `npm run ios:expo-go` + Expo Go | The **full** app — real contacts, real local notifications | Free, but needs Expo Go installed and a computer running the dev server |
+| TestFlight | A real installable app, one public link, up to 10,000 people | $99/year Apple Developer |
+
+Every native dependency here is bundled in Expo Go — all 15, checked against Expo's own manifest —
+so the middle option needs no custom build. Details in `docs/PLATFORM.md` §6.2.
+
 > ### ⚠️ The web app and the Android app look identical once installed
 >
 > Both get an icon and open full screen. They are **different apps with separate data**, and
