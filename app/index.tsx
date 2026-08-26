@@ -12,8 +12,8 @@
  * Nothing here infers contact. Launching WhatsApp or the dialer leaves the
  * reminder pending until the user explicitly confirms (§9).
  */
-import React, { useCallback, useState } from 'react';
-import { Alert, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, AppState, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useContainer } from '../src/ui/AppContext';
 import {
@@ -71,6 +71,16 @@ export default function HomeScreen() {
       void load();
     }, [load])
   );
+
+  // useFocusEffect covers navigation, not returning from outside the app.
+  // Granting notifications in Settings and coming back otherwise left the
+  // warning on screen, still saying reminders could not reach you.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void load();
+    });
+    return () => subscription.remove();
+  }, [load]);
 
   /**
    * Shown when reminders cannot actually reach the user.

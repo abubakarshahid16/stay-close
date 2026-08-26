@@ -11,7 +11,7 @@
  *   (docs/PLATFORM.md §1.2).
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, TextInput, StyleSheet, View } from 'react-native';
+import { Alert, AppState, Platform, TextInput, StyleSheet, View } from 'react-native';
 import * as Localization from 'expo-localization';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useContainer } from '../../../src/ui/AppContext';
@@ -132,6 +132,20 @@ export default function AddPeopleScreen() {
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  // Re-check whenever the app comes back to the foreground.
+  //
+  // Without this, granting the permission in device Settings and returning to
+  // the app left this screen exactly as it was: still saying access was
+  // refused, still showing only the manual form. The permission had changed and
+  // nothing asked again. Leaving and re-entering the screen was the only way
+  // to see it, which nobody would guess.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void load();
+    });
+    return () => subscription.remove();
   }, [load]);
 
   const usable = useMemo(

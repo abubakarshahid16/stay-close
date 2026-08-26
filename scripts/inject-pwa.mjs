@@ -243,6 +243,27 @@ const injection = `
         max-width: calc(100vw - 32px);
       }
       #sc-install.sc-show { display: inline-flex; }
+      #sc-apk {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 70px;
+        bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+        z-index: 2147483000;
+        display: none;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        background: #0b8043;
+        color: #fff;
+        font: 600 14px/1.1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        text-decoration: none;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+        white-space: nowrap;
+        max-width: calc(100vw - 32px);
+      }
+      #sc-apk.sc-show { display: inline-flex; }
       #sc-install:active { transform: translateX(-50%) scale(0.97); }
       #sc-install-dismiss {
         margin-left: 2px;
@@ -320,11 +341,23 @@ const injection = `
           try { return localStorage.getItem(DISMISSED) === '1'; } catch (e) { return false; }
         }
 
+        function isAndroid() {
+          return /Android/i.test(navigator.userAgent || '');
+        }
+
         function show(text) {
           var b = el('sc-install');
           if (!b || installed() || dismissed()) return;
           el('sc-install-label').textContent = text;
           b.classList.add('sc-show');
+
+          // Android is the one platform where a real, fully-featured app is
+          // available, and it is strictly better than the web build: it can
+          // read the address book and deliver reminders while closed. Offer it
+          // alongside, rather than letting someone install the limited version
+          // without knowing the other exists.
+          var apk = el('sc-apk');
+          if (apk && isAndroid()) apk.classList.add('sc-show');
         }
 
         function hide() {
@@ -373,6 +406,14 @@ const injection = `
 
         document.addEventListener('DOMContentLoaded', function () {
           if (isIos()) show('Add to Home Screen');
+
+          // Chrome may never fire beforeinstallprompt - already installed,
+          // dismissed before, or a browser that does not implement it - and the
+          // Android app offer must not depend on it.
+          if (isAndroid() && !installed() && !dismissed()) {
+            var apk = el('sc-apk');
+            if (apk) apk.classList.add('sc-show');
+          }
         });
       })();
     </script>
@@ -408,6 +449,10 @@ if (html.includes('manifest.json')) {
       <pre id="sc-diag-env"></pre>
       <button onclick="window.__scHardReload()">Clear cache and reload</button>
     </div>
+    <a id="sc-apk" href="https://github.com/abubakarshahid16/stay-close/releases/latest">
+      <span aria-hidden="true">⬇</span>
+      <span>Get the Android app</span>
+    </a>
     <button id="sc-install" onclick="window.__scInstall()" type="button">
       <span aria-hidden="true">⬇</span>
       <span id="sc-install-label">Install app</span>

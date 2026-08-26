@@ -194,6 +194,56 @@ console.log('\nWebKit, iPhone profile - Add to Home Screen path\n');
   await browser.close();
 }
 
+// ----------------------------------------------------- Android, real device --
+console.log('');
+console.log('Chromium, Android profile - the native app offer');
+console.log('');
+{
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ ...devices['Pixel 7'] });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(url, { waitUntil: 'load', timeout: 45000 });
+  await page.waitForTimeout(800);
+
+  // Android is the one platform with a fully-featured native app, so the offer
+  // must appear WITHOUT depending on beforeinstallprompt - Chrome does not fire
+  // it when already installed, previously dismissed, or in Firefox.
+  check('Android is offered the native app unprompted', await visible(page, 'sc-apk'));
+
+  const href = await page.evaluate(() => document.getElementById('sc-apk')?.getAttribute('href'));
+  check('the offer points at the latest release', href?.endsWith('/releases/latest') === true, href ?? '');
+
+  const label = await page.evaluate(() => document.getElementById('sc-apk')?.innerText ?? '');
+  check('the offer says what it is', /Android app/i.test(label), label.replace(/\s+/g, ' ').trim());
+
+  check('no page exceptions on Android', errors.length === 0, errors[0] ?? '');
+  await browser.close();
+}
+
+// The native-app offer must NOT appear on a desktop browser or an iPhone: there
+// is no APK to install on either, and a dead-end button is worse than none.
+console.log('');
+console.log('Desktop and iPhone must NOT see the Android offer');
+console.log('');
+{
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  await page.goto(url, { waitUntil: 'load', timeout: 45000 });
+  await page.waitForTimeout(600);
+  check('desktop is not offered an APK', !(await visible(page, 'sc-apk')));
+  await browser.close();
+
+  const wk = await webkit.launch();
+  const wkContext = await wk.newContext({ ...devices['iPhone 14'] });
+  const wkPage = await wkContext.newPage();
+  await wkPage.goto(url, { waitUntil: 'load', timeout: 45000 });
+  await wkPage.waitForTimeout(600);
+  check('iPhone is not offered an APK', !(await visible(wkPage, 'sc-apk')));
+  await wk.close();
+}
+
 server.close();
 
 const bad = checks.filter((c) => !c.ok);
