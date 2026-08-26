@@ -17,6 +17,7 @@
  */
 import type {
   NotificationContent,
+  ScheduledCycle,
   NotificationPermission,
   NotificationPermissionState,
   NotificationScheduler,
@@ -89,6 +90,23 @@ export class WebNotificationScheduler implements NotificationScheduler {
    * is why web reminders are in-app only — but it CAN show one now, and that is
    * enough to answer "do notifications reach me here".
    */
+  /**
+   * Not possible in a browser, for the same reason reminders are not: showing a
+   * notification requires the page to be running, and nothing runs after it is
+   * closed. Scheduling one for later needs a push server, which this product
+   * does not have by design.
+   *
+   * A no-op rather than an error, so the reconciler runs identically on both
+   * platforms and the web build simply ends up with nothing scheduled.
+   */
+  async scheduleCycle(): Promise<void> {}
+
+  async cancelCycle(): Promise<void> {}
+
+  async listScheduledCycles(): Promise<readonly ScheduledCycle[]> {
+    return [];
+  }
+
   async sendTest(content: NotificationContent): Promise<boolean> {
     try {
       if (typeof Notification === 'undefined') return false;

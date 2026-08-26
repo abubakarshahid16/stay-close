@@ -19,6 +19,7 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import type {
   NotificationContent,
+  ScheduledCycle,
   NotificationPermission,
   NotificationPermissionState,
   NotificationScheduler,
@@ -28,6 +29,15 @@ import { instant, reminderId, type Instant, type ReminderId } from '../../domain
 
 /** Prefix so our notifications are distinguishable from anything else. */
 const ID_PREFIX = 'stay-close-reminder-';
+
+/**
+ * A separate identifier space for upcoming-cycle notifications.
+ *
+ * Distinct from ID_PREFIX so the two tracks can be listed and cancelled
+ * independently. Reconciling reminders must never cancel a cycle notification,
+ * and vice versa.
+ */
+const CYCLE_PREFIX = 'stay-close-cycle-';
 
 /**
  * Versioned deliberately.
@@ -158,6 +168,57 @@ export class ExpoNotificationScheduler implements NotificationScheduler {
    * easy to miss while the app is in the foreground, and the point is to watch
    * it arrive. Not keyed by ReminderId, so reconciliation leaves it alone.
    */
+  async scheduleCycle(key: string, at: Instant, content: NotificationContent): Promise<void> {
+    await this.ensureChannel();
+    const identifier = CYCLE_PREFIX + key;
+
+    // Replace rather than stack, same as reminders.
+    await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => undefined);
+
+    await Notifications.scheduleNotificationAsync({
+      identifier,
+      content: {
+        title: content.title,
+        body: content.body,
+        badge: undefined,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: new Date(at),
+        channelId: Platform.OS === 'android' ? ANDROID_CHANNEL_ID : undefined,
+      },
+    });
+  }
+
+  async cancelCycle(key: string): Promise<void> {
+    await Notifications.cancelScheduledNotificationAsync(CYCLE_PREFIX + key).catch(
+      () => undefined
+    );
+  }
+
+  async listScheduledCycles(): Promise<readonly ScheduledCycle[]> {
+    try {
+      const all = await Notifications.getAllScheduledNotificationsAsync();
+      const out: ScheduledCycle[] = [];
+
+      for (const request of all) {
+        const identifier = request.identifier ?? '';
+        if (!identifier.startsWith(CYCLE_PREFIX)) continue;
+
+      // Unreadable time reported as instant 0, matching listScheduled: the
+      // reconciler then sees it as drifted and replaces it, which is safer than
+      // omitting it and leaving a stale notification in place.
+      const at = dateFromTrigger(request.trigger);
+        out.push({ key: identifier.slice(CYCLE_PREFIX.length), at: at ?? instant(0) });
+      }
+      return out;
+    } catch {
+      // "Nothing scheduled", so reconciliation re-registers rather than
+      // trusting an unreadable OS state.
+      return [];
+    }
+  }
+
   async sendTest(content: NotificationContent): Promise<boolean> {
     try {
       await this.ensureChannel();

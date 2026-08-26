@@ -7,6 +7,7 @@
  */
 import type {
   NotificationContent,
+  ScheduledCycle,
   NotificationPermission,
   NotificationPermissionState,
   NotificationScheduler,
@@ -69,6 +70,23 @@ export class FakeNotificationScheduler implements NotificationScheduler {
   }
 
   /** Recorded so tests can assert a test alert was attempted, and honoured. */
+  /** Upcoming-cycle notifications, kept separately from reminder ones. */
+  readonly cycles = new Map<string, { key: string; at: Instant }>();
+  readonly cycleScheduleCalls: { key: string; at: Instant; content: NotificationContent }[] = [];
+
+  async scheduleCycle(key: string, at: Instant, content: NotificationContent): Promise<void> {
+    this.cycles.set(key, { key, at });
+    this.cycleScheduleCalls.push({ key, at, content });
+  }
+
+  async cancelCycle(key: string): Promise<void> {
+    this.cycles.delete(key);
+  }
+
+  async listScheduledCycles(): Promise<readonly ScheduledCycle[]> {
+    return [...this.cycles.values()];
+  }
+
   async sendTest(content: NotificationContent): Promise<boolean> {
     this.testCalls.push(content);
     return this.state === 'granted';
