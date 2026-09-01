@@ -1,0 +1,28 @@
+{
+  "name": "stay-close",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test",
+    "lint": "npm run typecheck",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "expo": "~57.0.0",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "prettier": "^3.6.2",
+    "typescript": "~6.0.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
