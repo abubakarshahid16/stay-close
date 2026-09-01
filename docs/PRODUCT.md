@@ -67,6 +67,32 @@ allowed only when needed to exercise product behavior.
 
 Phase B, UI/UX, starts only after Functional V1 acceptance passes.
 
+## Scorecard Data Foundation
+
+V1 should create the data foundation for future scorecards and statistics without building a
+decorative dashboard in Phase A.
+
+The app should be able to derive future metrics from local history, such as:
+
+- Completed reminders.
+- Skipped reminders.
+- Overdue reminders.
+- Confirmed contacts.
+- People never contacted.
+- Days since last confirmed contact.
+- Group-level completion behavior.
+
+These values should be calculated from persisted local reminder and contact history where possible,
+not stored as fragile duplicate state.
+
+## Testing Rule
+
+Every functional issue must include verification before it is considered done.
+
+Documentation and architecture issues are verified by checklist review. Code issues require the
+smallest relevant automated checks, and platform-sensitive behavior requires real iOS or Android
+validation when the issue calls for it.
+
 ## Platform Direction
 
 Use Expo, React Native, and TypeScript unless a specific native capability cannot be satisfied that
@@ -116,4 +142,5 @@ Functional V1 is complete only when the app can:
 - Preserve history after contact removal, group deletion, and schedule changes.
 - Recover correctly after app restart.
 - Avoid duplicate reminders and duplicate notifications.
+- Provide a local history foundation for future scorecards and statistics.
 - Pass automated, offline, and physical-device validation.
