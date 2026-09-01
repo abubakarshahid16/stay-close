@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Stay Close",
+    "slug": "stay-close",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.abubakarshahid16.stayclose"
+    },
+    "android": {
+      "package": "com.abubakarshahid16.stayclose"
+    }
+  }
+}
